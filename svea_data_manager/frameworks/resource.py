@@ -1,7 +1,11 @@
 from pathlib import Path
+import logging
 
 from svea_data_manager.frameworks import exceptions
 from svea_data_manager.frameworks.helpers import verify_path
+
+
+logger = logging.getLogger(__name__)
 
 
 class Resource:
@@ -14,10 +18,9 @@ class Resource:
         self._target_path = path
 
         if type(attributes) is not dict:
-            raise TypeError(
-                'attributes must be dict, '
-                'not {}.'.format(type(attributes))
-            )
+            msg = 'attributes must be dict, not {}.'.format(type(attributes))
+            logger.error(msg)
+            raise TypeError(msg)
 
         self._attributes = attributes
 
@@ -60,16 +63,13 @@ class ResourceCollection:
 
     def add(self, resource):
         if not isinstance(resource, Resource):
-            raise TypeError(
-                'Only instances of Resource can be added to this '
-                'collection, not {}.'.format(type(resource))
-            )
+            msg = 'Only instances of Resource can be added to this collection, not {}.'.format(type(resource))
+            logging.error(msg)
+            raise TypeError(msg)
         if self.has(resource):
-            raise exceptions.ResourceAlreadyInCollection(
-                'Resource {} could not be added to this '
-                'collection since it already has been '
-                'added.'.format(resource)
-            )
+            msg = 'Resource {} could not be added to this collection since it already has been added.'.format(resource)
+            logging.error(msg)
+            raise exceptions.ResourceAlreadyInCollection(msg)
         self._resources[str(resource)] = resource
 
     def has(self, resource):
@@ -77,10 +77,9 @@ class ResourceCollection:
 
     def get(self, resource):
         if not self.has(resource):
-            raise exceptions.ResourceNotInCollection(
-                'Resource {} does not exist in this '
-                'collection.'.format(resource)
-            )
+            msg = 'Resource {} does not exist in this collection.'.format(resource)
+            logging.error(msg)
+            raise exceptions.ResourceNotInCollection(msg)
         return self._resources[str(resource)]
 
 

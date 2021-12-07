@@ -1,17 +1,23 @@
+import logging
+
 from svea_data_manager.frameworks import ResourceCollection
 from svea_data_manager.frameworks import exceptions
+
+
+logger = logging.getLogger(__name__)
 
 
 class Package:
 
     def __init__(self, package_key):
         if type(package_key) is not str:
-            raise TypeError(
-                'package_key must be of type string, '
-                'not {}.'.format(type(package_key))
-            )
+            msg = 'package_key must be of type string, not {}.'.format(type(package_key))
+            logger.error(msg)
+            raise TypeError(msg)
         if len(package_key) == 0:
-            raise ValueError('package_key string must not be empty.')
+            msg = 'package_key string must not be empty.'
+            logger.error(msg)
+            raise ValueError(msg)
 
         self._package_key = package_key
         self._resources = ResourceCollection()
@@ -34,16 +40,13 @@ class PackageCollection:
 
     def add(self, package):
         if not isinstance(package, Package):
-            raise TypeError(
-                'Only instances of Package can be added to this '
-                'collection, not {}.'.format(type(package))
-            )
+            msg = 'Only instances of Package can be added to this collection, not {}.'.format(type(package))
+            logger.error(msg)
+            raise TypeError(msg)
         if self.has(package):
-            raise exceptions.PackageAlreadyInCollection(
-                'Package {} could not be added to this '
-                'collection since it already has been '
-                'added.'.format(package)
-            )
+            msg = 'Package {} could not be added to this collection since it already has been added.'.format(package)
+            logger.error(msg)
+            raise exceptions.PackageAlreadyInCollection(msg)
         self._packages[str(package)] = package
 
     def has(self, package):
@@ -51,10 +54,9 @@ class PackageCollection:
 
     def get(self, package):
         if not self.has(package):
-            raise exceptions.PackageNotInCollection(
-                'Package {} does not exist in this '
-                'collection.'.format(package)
-            )
+            msg = 'Package {} does not exist in this collection.'.format(package)
+            logger.debug(msg)
+            raise exceptions.PackageNotInCollection(msg)
         return self._packages[str(package)]
 
 

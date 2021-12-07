@@ -1,8 +1,12 @@
 from pathlib import Path
+import logging 
 
 from svea_data_manager.frameworks import PackageCollection, Package
 from svea_data_manager.frameworks import Resource
 from svea_data_manager.frameworks import exceptions
+
+
+logger = logging.getLogger(__name__)
 
 
 class Instrument:
@@ -11,21 +15,19 @@ class Instrument:
 
     def __init__(self, config = {}):
         if not type(self.name) is str or len(self.desc) == 0:
-            raise TypeError(
-                'Class property name must be defined '
-                'as a non-empty string for {}'.format(self.__class__)
-            )
+            msg = 'Class property name must be defined as a non-empty string for {}'.format(self.__class__)
+            logger.error(msg)
+            raise TypeError(msg)
 
         if not type(self.desc) is str or len(self.desc) == 0:
-            raise TypeError(
-                'Class property desc must be defined '
-                'as a non-empty string for {}'.format(self.__class__)
-            )
+            msg = 'Class property desc must be defined as a non-empty string for {}'.format(self.__class__)
+            logger.error(msg)
+            raise TypeError()
 
         if 'source_directory' not in config:
-            raise exceptions.ImproperlyConfiguredInstrument(
-                'Missing required configuration source_directory.'
-            )
+            msg = 'Missing required configuration source_directory.'
+            logger.error(msg)
+            raise exceptions.ImproperlyConfiguredInstrument(msg)
 
         self._config = config
         self._packages = None
@@ -49,6 +51,7 @@ class Instrument:
             except PackageCollection.NotInCollection:
                 package = self.prepare_package(package_key)
                 self.packages.add(package)
+                logger.info(f'New package for added to PackageCollection: {package}')
 
             package.resources.add(resource)
 
@@ -60,7 +63,6 @@ class Instrument:
         for package in self.packages:
             self.write_package(package)
 
-
     def get_package_key_for_resource(self, resource):
         return resource.source_path.stem
 
@@ -71,27 +73,22 @@ class Instrument:
         return Package(package_key)
 
     def transform_package(self, package):
-        raise NotImplementedError(
-            'Class {} has not implemented '
-            'transform_package method.'.format(self.__class__.__name__)
-        )
+        msg = 'Class {} has not implemented transform_package method.'.format(self.__class__.__name__)
+        logger.error(msg)
+        raise NotImplementedError(msg)
 
     def write_package(self, package):
-        raise NotImplementedError(
-            'Class {} has not implemented '
-            'write_package method.'.format(self.__class__.__name__)
-        )
+        msg = 'Class {} has not implemented write_package method.'.format(self.__class__.__name__)
+        logger.error(msg)
+        raise NotImplementedError(msg)
 
     @property
     def packages(self):
         if not isinstance(self._packages, PackageCollection):
-            raise exceptions.PackagesNotExtracted(
-                'Packages has not yet been extracted for {}. '
-                'Make sure to call the read_packages method '
-                'before trying to access packages.'.format(
-                    self.__class__.__name__
-                )
-            )
+            msg = 'Packages has not yet been extracted for {}. Make sure to call the read_packages method before trying to access packages.'.format(self.__class__.__name__)
+            logger.error(msg)
+            raise exceptions.PackagesNotExtracted(msg)
+
         return self._packages
 
     @property

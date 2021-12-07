@@ -1,13 +1,15 @@
 from pathlib import Path
+import logging
 
+
+logger = logging.getLogger(__name__)
 
 def verify_path(path):
     path = Path(path)
 
     if path.is_absolute() or '..' in path.parts:
-        raise ValueError(
-            'path must not be absolute or '
-            'contain any traversal characters.'
-        )
+        msg = 'path must not be absolute or contain any traversal characters.'
+        logger.error(msg)
+        raise ValueError(msg)
 
     return path

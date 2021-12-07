@@ -21,3 +21,7 @@ class ResourceAlreadyInCollection(Exception):
 class ResourceNotInCollection(Exception):
     """The resource does not exist in the resource collection"""
     pass
+
+class PackageKeyNotFoundForResource(Exception):
+    """No package key found for resource"""
+    pass
