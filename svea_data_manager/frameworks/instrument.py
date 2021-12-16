@@ -22,7 +22,7 @@ class Instrument:
         if not type(self.desc) is str or len(self.desc) == 0:
             msg = 'Class property desc must be defined as a non-empty string for {}'.format(self.__class__)
             logger.error(msg)
-            raise TypeError()
+            raise TypeError(msg)
 
         if 'source_directory' not in config:
             msg = 'Missing required configuration source_directory.'
