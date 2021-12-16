@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def verify_path(path):
+def check_path(path):
     path = Path(path)
 
     if path.is_absolute() or '..' in path.parts:

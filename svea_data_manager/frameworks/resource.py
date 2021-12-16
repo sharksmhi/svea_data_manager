@@ -2,7 +2,7 @@ from pathlib import Path
 import logging
 
 from svea_data_manager.frameworks import exceptions
-from svea_data_manager.frameworks.helpers import verify_path
+from svea_data_manager.frameworks.helpers import check_path
 
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class Resource:
     def __init__(self, source_directory, path, attributes = {}):
         self._source_directory = Path(source_directory)
 
-        path = verify_path(path)
+        path = check_path(path)
         self._source_path = path
         self._target_path = path
 
@@ -50,7 +50,7 @@ class Resource:
 
     @target_path.setter
     def target_path(self, path):
-        self._target_path = verify_path(path)
+        self._target_path = check_path(path)
 
 
 class ResourceCollection:
