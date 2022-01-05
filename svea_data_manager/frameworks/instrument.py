@@ -42,6 +42,10 @@ class Instrument:
             resource = self.prepare_resource(source_file)
 
             if not isinstance(resource, Resource):
+                logger.warning(
+                    "Don't know how to handle source file: %s. "
+                    "Skipping file." % source_file
+                )
                 continue
 
             package_key = self.get_package_key_for_resource(resource)
