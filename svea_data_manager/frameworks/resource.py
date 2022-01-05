@@ -1,5 +1,6 @@
 from pathlib import Path
 import logging
+import datetime
 
 from svea_data_manager.frameworks import exceptions
 from svea_data_manager.frameworks.helpers import check_path
@@ -52,6 +53,27 @@ class Resource:
     def target_path(self, path):
         self._target_path = check_path(path)
 
+    @property
+    def date(self):
+        try:
+            return datetime.datetime(int(self._attributes['year']),
+                                     int(self._attributes['month']),
+                                     int(self._attributes['day'])).date()
+        except KeyError:
+            return None
+
+    @property
+    def datetime(self):
+        try:
+            return datetime.datetime(int(self._attributes['year']),
+                                     int(self._attributes['month']),
+                                     int(self._attributes['day']),
+                                     int(self._attributes['hour']),
+                                     int(self._attributes['minute']),
+                                     int(self._attributes['second']))
+        except KeyError:
+            return None
+
 
 class ResourceCollection:
 
@@ -60,6 +82,9 @@ class ResourceCollection:
     
     def __iter__(self):
         return iter(self._resources.values())
+
+    def __len__(self):
+        return len(self._resources)
 
     def add(self, resource):
         if not isinstance(resource, Resource):

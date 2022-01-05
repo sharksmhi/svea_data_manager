@@ -38,6 +38,9 @@ class PackageCollection:
     def __iter__(self):
         return iter(self._packages.values())
 
+    def __len__(self):
+        return len(self._packages)
+
     def add(self, package):
         if not isinstance(package, Package):
             msg = 'Only instances of Package can be added to this collection, not {}.'.format(type(package))
