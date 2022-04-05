@@ -1,0 +1,12 @@
+ADCP:
+  source_directory: ${SVEA_SOURCE_DIR}/adcp
+  target_directory: ${SVEA_TARGET_DIR}/adcp
+CTD:
+  source_directory: ${SVEA_SOURCE_DIR}/ctd
+  subversion_repo_url: ${SVEA_SVN_REPO}/ctd
+Ferrybox:
+  source_directory: ${SVEA_SOURCE_DIR}/ferrybox
+  subversion_repo_url: ${SVEA_SVN_REPO}/ferrybox
+MVP:
+  source_directory: ${SVEA_SOURCE_DIR}/mvp
+  subversion_repo_url: ${SVEA_SVN_REPO}/mvp

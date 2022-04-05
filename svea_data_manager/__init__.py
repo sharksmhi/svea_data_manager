@@ -1,3 +1,7 @@
+import os
+import yaml
+import string
+
 from svea_data_manager.frameworks import Instrument
 
 
@@ -92,3 +96,23 @@ class SveaDataManager:
             instance.register_instrument(instrument)
 
         return instance
+
+    @classmethod
+    def from_yaml(cls, config_path, config_vars={}):
+        config_content = ''
+
+        with open(config_path, 'r', encoding='utf8') as config_file:
+            config_content = config_file.read()
+
+        env_vars = {
+            env_key: env_val for env_key, env_val
+            in os.environ.items() if env_key.startswith('SVEA_')
+        }
+
+        config_template = string.Template(config_content)
+
+        config = yaml.safe_load(
+            config_template.safe_substitute(env_vars, **config_vars)
+        )
+
+        return cls.from_config(config)
