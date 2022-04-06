@@ -241,6 +241,7 @@ class SubversionStorage(Storage):
         opts = [
             '-U', self._root_url,
             '-m', kwargs.pop('commit_message', ''),
-            '--' # indicate "end of options"
+            '-X', '-' # read from stdin
         ]
-        return self._run_command(self._svnmucc_exec, *(opts + list(args)), **kwargs)
+        kwargs = {**kwargs, 'input': os.linesep.join(args)}
+        return self._run_command(self._svnmucc_exec, *opts, **kwargs)
