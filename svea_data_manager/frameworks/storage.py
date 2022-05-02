@@ -9,6 +9,10 @@ from abc import ABC, abstractmethod
 from svea_data_manager.frameworks import Package
 from svea_data_manager.frameworks import exceptions
 
+import logging
+
+logger = logging.getLogger(__file__)
+
 
 class Storage(ABC):
 
@@ -18,7 +22,7 @@ class Storage(ABC):
                 'package must be an instance '
                 'of Package, not {}'.format(type(package))
             )
-        return self._write(package, force)
+        return self._write(package, force=force)
 
     def delete(self, package):
         if not isinstance(package, Package):
@@ -29,7 +33,7 @@ class Storage(ABC):
         return self._delete(package)
 
     @abstractmethod
-    def _write(self, package):
+    def _write(self, package, **kwargs):
         pass
 
     @abstractmethod
@@ -44,12 +48,10 @@ class FileStorage(Storage):
     def __init__(self, root_directory):
         root_directory = pathlib.Path(root_directory).resolve()
         if not root_directory.is_dir():
-            raise ValueError(
-                'root_directory must be an existing, '
-                'writeable directory.'
-            )
+            msg = f'root_directory must be an existing, writeable directory: {root_directory}'
+            logger.error(msg)
+            raise ValueError(msg)
         self._root_directory = root_directory
-
 
     def _write(self, package, force=False):
         # list with tuples of (source_path, target_path).
@@ -79,9 +81,8 @@ class FileStorage(Storage):
 
         return copied_files
 
-
     def _delete(self, package):
-        #TODO: Clean up left-overs: empty parent directories.
+        # TODO: Clean up left-overs: empty parent directories.
         removed_files = []
         for resource in package.resources:
             absolute_target_path = self._resolve_path(resource.target_path)
@@ -92,14 +93,11 @@ class FileStorage(Storage):
 
         return removed_files
 
-
     def _resolve_path(self, path):
         return self._root_directory.joinpath(path)
 
 
-
 class SubversionStorage(Storage):
-
     class MissingExecutable(Exception):
         """An required external program could not be found on the system"""
         pass
@@ -107,7 +105,6 @@ class SubversionStorage(Storage):
     class SubversionError(Exception):
         """An error occured when executing the Subversion binary"""
         pass
-
 
     def __init__(self, root_url, username=None, password=None):
         self._root_url = root_url
@@ -117,7 +114,7 @@ class SubversionStorage(Storage):
         svn_exec = shutil.which('svn')
         svnmucc_exec = shutil.which('svnmucc')
 
-        if svn_exec == None or svnmucc_exec == None:
+        if svn_exec is None or svnmucc_exec is None:
             raise SubversionStorage.MissingExecutable(
                 'The svn executable could not be found. '
                 'Make sure it is installed and in your PATH.'
@@ -125,7 +122,6 @@ class SubversionStorage(Storage):
 
         self._svn_exec = svn_exec
         self._svnmucc_exec = svnmucc_exec
-
 
     def _write(self, package, force=False):
         # list of files and dirs already in version control.
@@ -164,17 +160,16 @@ class SubversionStorage(Storage):
                 if parent_path not in existing_paths + commited_additions:
                     multi_command = multi_command + ['mkdir', str(parent_path)]
                     commited_additions.append(parent_path)
-            
+
             # schedule put action for target.
             multi_command = multi_command + ['put', str(source_path), str(target_path)]
             commited_additions.append(target_path)
 
         # run multi-command: commit
         commit_message = 'Add files for package: %s' % package
-        self._run_svn_multi_command(*multi_command,commit_message=commit_message)
+        self._run_svn_multi_command(*multi_command, commit_message=commit_message)
 
         return commited_additions
-
 
     def _delete(self, package):
         # list of files and dirs already in version control.
@@ -191,10 +186,9 @@ class SubversionStorage(Storage):
 
         # run multi-command: commit
         commit_message = 'Remove files for package: %s' % package
-        self._run_svn_multi_command(*multi_command,commit_message=commit_message)
+        self._run_svn_multi_command(*multi_command, commit_message=commit_message)
 
         return commited_removals
-
 
     def _get_versioned_paths(self):
         xml_output = self._run_svn_command(
@@ -205,14 +199,13 @@ class SubversionStorage(Storage):
             for name in ET.fromstring(xml_output).findall('list/entry/name')
         ]
 
-
     def _run_command(self, exec_path, *args, **kwargs):
         cmd = [exec_path, '--non-interactive']
 
-        if self._username != None:
+        if self._username is not None:
             cmd = cmd + ['--username', self._username]
 
-        if self._password != None:
+        if self._password is not None:
             cmd = cmd + ['--password', self._password]
 
         cmd = cmd + list(args)
@@ -232,16 +225,14 @@ class SubversionStorage(Storage):
 
         return completed_process.stdout.strip()
 
-
     def _run_svn_command(self, *args, **kwargs):
         return self._run_command(self._svn_exec, *args, **kwargs)
-
 
     def _run_svn_multi_command(self, *args, **kwargs):
         opts = [
             '-U', self._root_url,
             '-m', kwargs.pop('commit_message', ''),
-            '-X', '-' # read from stdin
+            '-X', '-'  # read from stdin
         ]
         kwargs = {**kwargs, 'input': os.linesep.join(args)}
         return self._run_command(self._svnmucc_exec, *opts, **kwargs)

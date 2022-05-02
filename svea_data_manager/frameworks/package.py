@@ -3,7 +3,6 @@ import logging
 from svea_data_manager.frameworks import ResourceCollection
 from svea_data_manager.frameworks import exceptions
 
-
 logger = logging.getLogger(__name__)
 
 

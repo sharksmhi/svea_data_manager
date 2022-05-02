@@ -1,10 +1,9 @@
+import logging
 from pathlib import Path
-import logging 
 
 from svea_data_manager.frameworks import PackageCollection, Package
 from svea_data_manager.frameworks import Resource
 from svea_data_manager.frameworks import exceptions
-
 
 logger = logging.getLogger(__name__)
 
