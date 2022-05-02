@@ -4,7 +4,6 @@ import re
 
 from svea_data_manager.frameworks import Instrument, Resource
 from svea_data_manager.frameworks import SubversionStorage
-from svea_data_manager.frameworks import FileStorage
 from svea_data_manager.frameworks import exceptions
 
 
@@ -14,8 +13,6 @@ logger = logging.getLogger(__name__)
 class MVP(Instrument):
     name = 'MVP'
     desc = 'MVP monitoring from Svea'
-    source_subdir = 'MVP'
-    target_subdir = 'MVP'
 
     def __init__(self, config):
         super().__init__(config)
@@ -24,7 +21,6 @@ class MVP(Instrument):
                 'Missing required configuration subversion_repo_url.'
             )
         self._storage = SubversionStorage(self._config['subversion_repo_url'])
-        # self._storage = FileStorage(self._config['target_directory'])
 
     def prepare_resource(self, source_file):
         return MVPResource.from_source_file(self.source_directory, source_file)
@@ -48,7 +44,7 @@ class MVPResource(Resource):
                                                       '(?P<hour>\d{2})',
                                                       '(?P<minute>\d{2})',
                                                       '(?P<second>\d{2})',
-                                                      '(?P<cut>.+-.+)'), re.I),
+                                                      '(?P<transect>.+-.+)'), re.I),
         re.compile('^{}{}_{}-{}-{}_{}{}{}{}$'.format('(?P<prefix>.{1})?',
                                                      '(?P<instrument>MVP)',  # RAWDATA
                                                      '(?P<year>\d{4})',
@@ -102,9 +98,9 @@ class MVPResource(Resource):
 
             if name_match:
                 attributes = name_match.groupdict()
-                if not attributes.get('cut') and 'RAWDATA' in source_file.parts:
-                    attributes['cut'] = source_file.parent.name
-                attributes['cut'] = attributes['cut'].upper()
+                if not attributes.get('transect') and 'RAWDATA' in source_file.parts:
+                    attributes['transect'] = source_file.parent.name
+                attributes['transect'] = attributes['transect'].upper()
                 attributes['suffix'] = source_file.suffix
                 resource = MVPResource(root_directory, source_file, attributes)
                 return resource

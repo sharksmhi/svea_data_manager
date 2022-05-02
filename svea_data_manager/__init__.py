@@ -1,18 +1,21 @@
 import os
-import yaml
 import string
 
+import yaml
+
 from svea_data_manager.frameworks import Instrument
+import logging
+
+logger = logging.getLogger(__file__)
 
 
 class SveaDataManager:
 
-    def __init__(self, instruments = []):
+    def __init__(self, instruments=[]):
         self._instruments = {}
 
         for instrument in instruments:
             self.register_instrument(instrument)
-
 
     def register_instrument(self, instrument):
         if not isinstance(instrument, Instrument):
@@ -56,8 +59,8 @@ class SveaDataManager:
     def instruments(self):
         return list(self._instruments.values())
 
-
     def read_packages(self):
+        logger.debug('Reading packages')
         for instrument in self.instruments:
             instrument.read_packages()
 
@@ -77,7 +80,6 @@ class SveaDataManager:
         # Step 3 - load packages for each registered instrument.
         self.write_packages()
 
-  
     @classmethod
     def from_config(cls, config):
         instance = cls()
@@ -85,7 +87,7 @@ class SveaDataManager:
         from svea_data_manager import instruments
         for instrument_type in config:
             try:
-                instrument_cls = instruments.__getattribute__(instrument_type)
+                instrument_cls = instruments.__getattribute__(instrument_type.upper())
             except AttributeError:
                 raise ValueError(
                     'Could not resolve instrument class for key %s '
