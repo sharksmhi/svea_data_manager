@@ -70,7 +70,7 @@ class ADCPResourceRaw(ADCPResource):
     ]
     @property
     def target_path(self):
-        parts_list = [self.attributes['instrument'], self.attributes['year'], self.package_key, 'raw', self.source_path.name]
+        parts_list = [self.attributes['year'], self.package_key, 'raw', self.source_path.name]
         # Assuring instrument sub folder in instrument class
         return pathlib.Path(*parts_list)
 
@@ -85,6 +85,7 @@ class ADCPResourceRaw(ADCPResource):
                 attributes['suffix'] = source_file.suffix
                 resource = ADCPResourceRaw(root_directory, source_file, attributes)
                 return resource
+        logger.info(f'Not patterns match for file: {source_file}')
 
 
 class ADCPResourceProcessed(ADCPResource):
@@ -94,7 +95,11 @@ class ADCPResourceProcessed(ADCPResource):
     PATTERNS = [
         re.compile('{}_{}_{}_utdata'.format('(?P<ship>\d{2}\D{2})',
                                             '(?P<year>\d{4})',
-                                            '(?P<cruise>\d{2})'))
+                                            '(?P<cruise>\d{2})')),
+        re.compile('^{}_{}_{}_{}_utdata$'.format('(?P<instrument>ADCP\w+)',
+                                             '(?P<ship>\d{2}\D{2})',
+                                             '(?P<year>\d{4})',
+                                             '(?P<cruise>\d{2})'))
         ]
 
     @property
