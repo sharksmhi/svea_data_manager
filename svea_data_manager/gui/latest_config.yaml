@@ -1,0 +1,6 @@
+ferrybox:
+  force: true
+  source_directory: //winfs-proj/proj/havgem/EXPRAPP/Exprap2022/Svea_v6-7_februari/Ferrybox
+  subversion_repo_url: false
+  target_directory: C:\mw\temmp\test_sdm\test_data_lena
+  test_mode: true

@@ -231,6 +231,8 @@ class App(tk.Tk):
 
     def _set_source_path_for_instrument(self, inst, path):
         """ Sets source_path to corresponding stringvariable and instrument in self._config """
+        if not self._stringvars_source_directory.get(inst):
+            return
         self._stringvars_source_directory[inst].set('')
         if not self._config:
             return
@@ -306,7 +308,7 @@ class App(tk.Tk):
     def _run_with_config(config):
         sdm = SveaDataManager.from_config(config)
         sdm.read_packages()
-        # sdm.write_packages()
+        sdm.write_packages()
 
 
 def grid_configure(frame, nr_rows=1, nr_columns=1, **kwargs):
