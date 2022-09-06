@@ -3,11 +3,14 @@ import pathlib
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
+import logging
 
 from abc import ABC, abstractmethod
 
 from svea_data_manager.frameworks import Package
 from svea_data_manager.frameworks import exceptions
+
+logger = logging.getLogger(__name__)
 
 
 class Storage(ABC):
@@ -50,8 +53,11 @@ class FileStorage(Storage):
             )
         self._root_directory = root_directory
 
-
     def _write(self, package, force=False):
+        if force:
+            msg = 'Not allowed to force writing to File Storage'
+            logger.error(msg)
+            raise exceptions.ForceNotAllowed(msg)
         # list with tuples of (source_path, target_path).
         files_to_copy = []
 
@@ -61,10 +67,9 @@ class FileStorage(Storage):
             absolute_target_path = self._resolve_path(resource.target_path)
 
             if not force and absolute_target_path.exists():
-                raise exceptions.ResourceAlreadyInStorage(
-                    'resource with target path {} '
-                    'already exists.'.format(resource.target_path)
-                )
+                msg = f'resource with target path {resource.target_path} already exists.'
+                logger.error(msg)
+                raise exceptions.ResourceAlreadyInStorage(msg)
 
             files_to_copy.append(
                 (absolute_source_path, absolute_target_path)
@@ -78,7 +83,6 @@ class FileStorage(Storage):
             copied_files.append(copied_file)
 
         return copied_files
-
 
     def _delete(self, package):
         #TODO: Clean up left-overs: empty parent directories.

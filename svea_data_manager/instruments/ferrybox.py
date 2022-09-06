@@ -10,7 +10,7 @@ from svea_data_manager.frameworks import exceptions
 logger = logging.getLogger(__name__)
 
 
-class FERRYBOX(Instrument):
+class Ferrybox(Instrument):
     name = 'Ferrybox'
     desc = 'Ferrybox monitoring from Svea'
 
