@@ -8,6 +8,10 @@ import logging
 
 logger = logging.getLogger(__file__)
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class SveaDataManager:
 
@@ -19,16 +23,17 @@ class SveaDataManager:
 
     def register_instrument(self, instrument):
         if not isinstance(instrument, Instrument):
-            raise TypeError('Only instances of Instrument can be registered')
+            msg = 'Only instances of Instrument can be registered'
+            logger.error(msg)
+            raise TypeError(msg)
         
         instrument_type = type(instrument).__name__
         
         if instrument_type in self._instruments.keys():
-            raise ValueError(
-                'Exactly one instance of the same instrument can be '
-                'registered. An instance of %s is already registered.'
-                % instrument_type
-            )
+            msg = f'Exactly one instance of the same instrument can be ' \
+                  f'registered. An instance of {instrument_type} is already registered.'
+            logger.error(msg)
+            raise ValueError(msg)
         
         self._instruments[instrument_type] = instrument
     
@@ -38,20 +43,19 @@ class SveaDataManager:
 
         instrument_type = type(instrument).__name__
 
-        if not instrument in self._instruments.values():
+        if instrument not in self._instruments.values():
 
             if instrument_type in self._instruments.keys():
-                raise ValueError(
-                    'Given instance of instrument is not a registered instrument. '
-                    'However, another instance of %s is registered. '
-                    'Did you mean to unregister another instance of %s?'
-                    % (instrument_type, instrument_type)
-                )
+                msg = f'Given instance of instrument is not a registered instrument. ' \
+                      f'However, another instance of {instrument_type} is registered. ' \
+                      f'Did you mean to unregister another instance of {instrument_type}?'
+                logger.error(msg)
+                raise ValueError(msg)
+
             else:
-                raise ValueError(
-                    'Given instance of instrument is not a registered instrument, '
-                    'neither are any other instance of %s.' % instrument_type
-                )
+                msg = f'Given instance of instrument is not a registered instrument, neither are any other instance of {instrument_type}.'
+                logger.error(msg)
+                raise ValueError(msg)
         
         del self._instruments[instrument_type]
  
@@ -64,9 +68,9 @@ class SveaDataManager:
         for instrument in self.instruments:
             instrument.read_packages()
 
-    def transform_packages(self):
+    def transform_packages(self, **kwargs):
         for instrument in self.instruments:
-            instrument.transform_packages()
+            instrument.transform_packages(**kwargs)
 
     def write_packages(self):
         for instrument in self.instruments:
@@ -80,19 +84,25 @@ class SveaDataManager:
         # Step 3 - load packages for each registered instrument.
         self.write_packages()
 
+    def write_report(self, directory):
+        for inst in self._instruments.values():
+            inst.write_report(directory)
+
     @classmethod
     def from_config(cls, config):
         instance = cls()
 
-        from svea_data_manager import instruments
+        import svea_data_manager.instruments
+
+        instruments = {instrument.name.upper(): instrument for instrument in Instrument.__subclasses__()}
+
         for instrument_type in config:
             try:
-                instrument_cls = instruments.__getattribute__(instrument_type.upper())
+                instrument_cls = instruments[instrument_type.upper()]
             except AttributeError:
-                raise ValueError(
-                    'Could not resolve instrument class for key %s '
-                    'found in config.' % instrument_type
-                )
+                msg = f'Could not resolve instrument class for key {instrument_type} found in config.'
+                logger.error(msg)
+                raise ValueError(msg)
 
             instrument = instrument_cls(config[instrument_type])
             instance.register_instrument(instrument)

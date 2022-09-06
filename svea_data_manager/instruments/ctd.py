@@ -35,7 +35,7 @@ class CTD(Instrument):
 
     def write_package(self, package):
         logger.info('Writing package %s to subversion repo' % package)
-        return self._storage.write(package, True)
+        return self._storage.write(package, self._config.get('force', False))
 
 
 class CTDResource(Resource):
