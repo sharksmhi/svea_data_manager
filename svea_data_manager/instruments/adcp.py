@@ -97,7 +97,7 @@ class ADCP(Instrument):
                     cruise = get_cruise_number_for_date(date)
                     if cruise is True:
                         break
-                    elif cruise in False:
+                    elif cruise is False:
                         if attributes.get('cruise'):
                             msg = f"Cruise for package {str(package)} if set from the outside to {attributes.get('cruise')}"
                             logger.warning(msg)
