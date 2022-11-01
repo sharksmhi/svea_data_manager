@@ -37,3 +37,7 @@ class ForceNotAllowed(Exception):
 class CruiseError(Exception):
     """Not allowed to force"""
     pass
+
+class ShipError(Exception):
+    """Not allowed to force"""
+    pass
