@@ -66,13 +66,22 @@ class FileStorage(Storage):
             absolute_target_path = self._resolve_path(resource.target_path)
 
             if not force and absolute_target_path.exists():
-                msg = f'resource with target path {resource.target_path} already exists.'
-                logger.error(msg)
-                raise exceptions.ResourceAlreadyInStorage(msg)
+                msg = f'Will not write file. Resource with target path {resource.target_path} already exists.'
+                logger.warning(msg)
+                continue
 
             files_to_copy.append(
                 (absolute_source_path, absolute_target_path)
             )
+
+            # if not force and absolute_target_path.exists():
+            #     msg = f'resource with target path {resource.target_path} already exists.'
+            #     logger.error(msg)
+            #     raise exceptions.ResourceAlreadyInStorage(msg)
+            #
+            # files_to_copy.append(
+            #     (absolute_source_path, absolute_target_path)
+            # )
 
         # second iteration: write extracted files to target.
         copied_files = []

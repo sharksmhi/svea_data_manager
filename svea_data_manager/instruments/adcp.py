@@ -65,12 +65,32 @@ class ADCP(Instrument):
         self._package_key_attributes = {}
 
     def prepare_resource(self, source_file):
-        resource = ADCPResourceRaw.from_source_file(self.source_directory, source_file)
+        resource = ADCPResourceProcessed.from_source_file(self.source_directory, source_file)
         if not resource:
-            resource = ADCPResourceProcessed.from_source_file(self.source_directory, source_file)
+            resource = ADCPResourceRaw.from_source_file(self.source_directory, source_file)
         if not resource:
             resource = ADCPResourceReadme.from_source_file(self.source_directory, source_file)
+        # if not resource.attributes['instrument'].startswith('ADCP'):
+        #     resource.attributes['instrument'] = 'ADCP' + resource.attributes['instrument']
+        self._set_ship(resource)
+        self._set_cruise(resource)
         return resource
+
+    def _set_ship(self, resource):
+        if not resource.attributes.get('ship'):
+            # if not self.config.get('attributes', {}).get('ship'):
+            #     msg = f'No ship information for file {resource.absolute_source_path}'
+            #     logger.error(msg)
+            #     raise exceptions.ShipError(msg)
+            resource.attributes['ship'] = self.config.get('attributes', {}).get('ship', None)
+
+    def _set_cruise(self, resource):
+        if not resource.attributes.get('cruise'):
+            # if not self.config.get('attributes', {}).get('cruise'):
+            #     msg = f'No cruise information for file {resource.absolute_source_path}'
+            #     logger.error(msg)
+            #     raise exceptions.ShipError(msg)
+            resource.attributes['cruise'] = self.config.get('attributes', {}).get('cruise', None)
 
     def get_package_key_for_resource(self, resource):
         return resource.package_key
@@ -85,7 +105,7 @@ class ADCP(Instrument):
 
     def transform_package(self, package, **kwargs):
         date = None
-        attributes = kwargs.get('attributes', {})
+        metadata = kwargs.get('metadata', {})
         resource = {}
         for resource in package.resources:
             if not date:
@@ -98,21 +118,21 @@ class ADCP(Instrument):
                     if cruise is True:
                         break
                     elif cruise is False:
-                        if attributes.get('cruise'):
-                            msg = f"Cruise for package {str(package)} if set from the outside to {attributes.get('cruise')}"
+                        if metadata.get('cruise'):
+                            msg = f"Cruise for package {str(package)} if set from the outside to {metadata.get('cruise')}"
                             logger.warning(msg)
                         else:
                             msg = f"No internal mapping for cruise was found for package {str(package)}"
                             logger.error(msg)
                             raise exceptions.CruiseError(msg)
                     else:
-                        msg = f"Cruise for package {str(package)} if set by internal mapping from {attributes.get('cruise')} to {cruise}"
+                        msg = f"Cruise for package {str(package)} if set by internal mapping from {metadata.get('cruise')} to {cruise}"
                         logger.warning(msg)
-                        attributes['cruise'] = cruise
+                        metadata['cruise'] = cruise
                     break
 
         for resource in package.resources:
-            resource.attributes.update(attributes)
+            resource.attributes.update(metadata)
             package._package_key = resource.package_key
         return resource.attributes.copy()
 
@@ -131,7 +151,10 @@ class ADCP(Instrument):
 
 class ADCPResource(Resource):
     INSTRUMENT_MAPPING = {
-        'ADCPWHM600': 'ADCPWH600'
+        'ADCPWHM600': 'ADCPWH600',
+        'WH600': 'ADCPWH600',
+        'WHM600': 'ADCPWH600',
+        'OS150': 'ADCPOS150'
     }
 
     @property
@@ -152,9 +175,16 @@ class ADCPResourceRaw(ADCPResource):
                                                 '(?P<ship>\d{2}\D{2})',
                                                 '(?P<year>\d{4})',
                                                 '(?P<cruise>\d{2})',
+                                                '(?P<nr>.+)')),
+        # OS150_SMHI_JAN_2022_ADCP001__029_000000
+        # OS150_SMHI_DEC_2021_ADCP_000_000000
+        re.compile('^{}_SMHI_{}_{}_{}$'.format('(?P<instrument>\w+)',
+                                                '(?P<month_string>\D+)',
+                                                '(?P<year>\d{4})',
                                                 '(?P<nr>.+)'))
 
     ]
+
     @property
     def target_path(self):
         parts_list = [self.attributes['instrument'], self.attributes['year'], self.package_key, 'raw', self.source_path.name]
@@ -181,6 +211,8 @@ class ADCPResourceProcessed(ADCPResource):
         'WH_LTA': 'ADCPWH600',
         }
 
+    SUB_DIRS = ['BB', 'NB']
+
     PATTERNS = [
         # re.compile('{}_{}_{}_utdata'.format('(?P<ship>\d{2}\D{2})',
         #                                     '(?P<year>\d{4})',
@@ -194,9 +226,16 @@ class ADCPResourceProcessed(ADCPResource):
     @property
     def target_path(self):
         root = pathlib.Path(self.attributes['instrument'], self.attributes['year'], self.package_key, 'processed')
-        # root = pathlib.Path(self.attributes['instrument'], self.attributes['year'], self.package_key, 'processed', self.attributes['processed_type'])
+        subdir = None
+        for part in self.source_path.parts:
+            if part.upper() in ADCPResourceProcessed.SUB_DIRS:
+                subdir = part.upper()
+                break
+        if subdir:
+            root = pathlib.Path(root, subdir)
         if self.attributes['suffix'] == '.nc':
-            path = pathlib.Path(root, f'{self.package_key}{self.attributes["suffix"]}')
+            path = pathlib.Path(root, self.source_path.name)
+            # path = pathlib.Path(root, f'{self.package_key}{self.attributes["suffix"]}')
         else:
             file_name = f'{self.package_key}_{self.source_path.name}'
             if self.attributes['suffix'] == '.png':

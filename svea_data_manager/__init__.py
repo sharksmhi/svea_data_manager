@@ -4,9 +4,8 @@ import string
 import yaml
 
 from svea_data_manager.frameworks import Instrument
-import logging
 
-logger = logging.getLogger(__file__)
+from svea_data_manager.frameworks import helpers
 
 import logging
 
@@ -63,10 +62,9 @@ class SveaDataManager:
     def instruments(self):
         return list(self._instruments.values())
 
-    def read_packages(self):
-        logger.debug('Reading packages')
+    def read_packages(self, **kwargs):
         for instrument in self.instruments:
-            instrument.read_packages()
+            instrument.read_packages(**kwargs)
 
     def transform_packages(self, **kwargs):
         for instrument in self.instruments:
@@ -75,6 +73,7 @@ class SveaDataManager:
     def write_packages(self):
         for instrument in self.instruments:
             instrument.write_packages()
+        helpers.clear_temp_dir()
 
     def run(self):
         # Step 1 - extract packages for each registered instrument.

@@ -3,7 +3,7 @@ import logging
 import datetime
 
 from svea_data_manager.frameworks import exceptions
-from svea_data_manager.frameworks.helpers import check_path
+from svea_data_manager.frameworks.helpers import check_path, get_temp_dir_path
 
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,17 @@ class Resource:
                                      int(self._attributes['second']))
         except KeyError:
             return None
+
+    @classmethod
+    def from_string_content(cls, string, file_name=None, attributes={}):
+        import uuid
+        if file_name:
+            temp_path = Path(get_temp_dir_path(), file_name)
+        else:
+            temp_path = Path(get_temp_dir_path(), str(uuid.uuid4()))
+        with open(temp_path, 'w') as fid:
+            fid.write(string)
+        return cls(temp_path.parent, temp_path.name, attributes=attributes)
 
 
 class ResourceCollection:
