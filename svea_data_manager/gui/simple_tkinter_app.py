@@ -35,13 +35,13 @@ class App(tk.Tk):
         self._stringvar_loglevel = tk.StringVar()
 
         self._config = None
+        self._report = None
+        self._report_frame = None
 
         self.logger = None
         self._log_level = 'DEBUG'
         self._loglevel_options = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
         self._logging_format = '%(asctime)s [%(levelname)10s]    %(pathname)s [%(lineno)d] => %(funcName)s():    %(message)s'
-
-        self._default_config_path = pathlib.Path(DIRECTORY, 'config.yaml')
 
         self._setup_logger()
 
@@ -49,11 +49,19 @@ class App(tk.Tk):
         self._build()
         self._startup()
 
+    @property
+    def _default_config_path(self):
+        for path in DIRECTORY.iterdir():
+            if path.name.startswith('config'):
+                return path
+
     def _startup(self):
         if not self._default_config_path.exists():
             return
-        self._stringvar_config.set(self._default_config_path)
-        self._on_select_config()
+        config_path = self._default_config_path
+        if config_path:
+            self._stringvar_config.set(self._default_config_path)
+            self._on_select_config()
 
     def _setup_logger(self, **kwargs):
         self.logger = logging.getLogger()
@@ -146,15 +154,20 @@ class App(tk.Tk):
         self._inner_config_frame.grid()
         grid_configure(self._frame_config)
 
-        frame = self._inner_config_frame
         gridl = dict(padx=5, pady=2)
         gridb = dict(padx=(10, 5), pady=2)
 
         line_length = 120
 
-        r = 0
+        self._stringvar_attributes = {}
+
+        conf_r = 0
         for inst in self._config:
+            frame = tk.Frame(self._inner_config_frame)
+            frame.grid(row=conf_r, column=0, sticky='nsew', **gridl)
+            r = 0
             inst_lower = inst.lower()
+            self._stringvar_attributes[inst_lower] = {}
             tk.Label(frame, text='-'*line_length).grid(row=r, column=0, columnspan=2, **gridl, sticky='ew')
             r += 1
             tk.Label(frame, text=inst.upper()).grid(row=r, column=0, **gridl, sticky='w')
@@ -164,16 +177,36 @@ class App(tk.Tk):
                     self._buttons_path[inst_lower] = tk.Button(frame, text=key, command=lambda x=inst: self._select_instrument_dir(x))
                     self._buttons_path[inst_lower].grid(row=r, column=0, **gridb, sticky='w')
                     tk.Label(frame, textvariable=self._stringvars_source_directory[inst_lower]).grid(row=r, column=1, **gridl, sticky='w')
+                elif key == 'attributes':
+                    tk.Label(frame, text=str(key)).grid(row=r, column=0, **gridl, sticky='nw')
+                    attr_frame = tk.Frame(frame)
+                    attr_frame.grid(row=r, column=1, **gridl, sticky='w')
+                    ar = 0
+                    for attr, value in item.items():
+                        if not value:
+                            value = ''
+                        tk.Label(attr_frame, text=attr).grid(row=ar, column=0, **gridl, sticky='w')
+                        self._stringvar_attributes[inst_lower][attr] = tk.StringVar()
+                        entry = tk.Entry(attr_frame, textvariable=self._stringvar_attributes[inst_lower][attr])
+                        entry.grid(row=ar, column=1, **gridl, sticky='w')
+                        self._stringvar_attributes[inst_lower][attr].set(value)
+                        if attr == 'ship':
+                            entry.config(state='disabled')
+                        ar += 1
+                    grid_configure(attr_frame, nr_columns=2, nr_rows=ar)
+
                 else:
                     tk.Label(frame, text=str(key)).grid(row=r, column=0, **gridl, sticky='w')
                     tk.Label(frame, text=str(item)).grid(row=r, column=1, **gridl, sticky='w')
+                grid_configure(frame, nr_columns=2, nr_rows=r+1)
+
                 r += 1
             self._buttons_run[inst_lower] = tk.Button(frame, text='Fortsätt',
                                                        command=lambda x=inst: self._run_instrument(x))
             self._buttons_run[inst_lower].grid(row=r, column=1, **gridb, sticky='e')
-            r += 1
-        tk.Label(frame, text='-' * line_length).grid(row=r, column=0, columnspan=2, **gridl, sticky='ew')
-        grid_configure(frame, nr_columns=2, nr_rows=r+1)
+            conf_r += 1
+        tk.Label(self._inner_config_frame, text='-' * line_length).grid(row=conf_r, column=0, columnspan=2, **gridl, sticky='ew')
+        grid_configure(self._inner_config_frame, nr_columns=2, nr_rows=conf_r+1)
 
     def _select_config_path(self, *args):
         path = filedialog.askopenfilename(title='Välj konfigurationsfil', filetypes=[('konfigurationsfil', '*.yaml')])
@@ -251,8 +284,17 @@ class App(tk.Tk):
             if not paths_str or not pathlib.Path(paths_str).exists():
                 self._stringvars_source_directory[inst].set('')
                 self._config[inst]['source_directory'] = ''
+                
+    def _add_attributes_to_config(self):
+        for inst, attrs in self._stringvar_attributes.items():
+            for key, var in attrs.items():
+                value = var.get().strip()
+                if not value:
+                    value = None
+                self._config[inst]['attributes'][key] = value
 
     def _run_all_instruments(self):
+        self._add_attributes_to_config()
         if not self._config:
             msg = 'Ingen gilltig konfigurationsfil hittades'
             messagebox.showwarning('Hanterar alla instrument', msg)
@@ -266,17 +308,19 @@ class App(tk.Tk):
                 return
         self._write_latest_config(self._config)
         try:
-            self._run_with_config(self._config)
+            report = self._run_with_config(self._config)
         except Exception as e:
             messagebox.showerror('Något gick fel', f'{e}\n\n{traceback.format_exc()}')
             logger.critical(e)
             logger.critical(traceback.format_exc())
             raise
-        msg = 'Hanteringen är klar för samtliga instrument'
+        msg = f'Hanteringen är klar för samtliga instrument. Se rapport under: {report["directory"]}.\n\n' \
+              f'{self._format_report(report)}'
         messagebox.showinfo('Hanterar alla instrument', msg)
         logger.debug(msg)
 
-    def _run_instrument(self, inst):
+    def _run_instrument(self, inst, show_message=False):
+        self._add_attributes_to_config()
         data = self._config.get(inst)
         if not data:
             return
@@ -287,28 +331,60 @@ class App(tk.Tk):
             return
         config = {inst: data}
         self._write_latest_config(config)
-
         try:
-            self._run_with_config(config)
+            report = self._run_with_config(config)
         except Exception as e:
             messagebox.showerror('Något gick fel', f'{e}\n\n{traceback.format_exc()}')
             logger.critical(e)
             logger.critical(traceback.format_exc())
             raise
-        msg = f'Hanteringen är klar för instrument: {inst.upper()}'
+
+        msg = f'Hanteringen är klar för instrument: {inst.upper()}. Se rapport under: {report["directory"]}.\n\n' \
+              f'{self._format_report(report)}'
         messagebox.showinfo('Hanterar alla instrument', msg)
         logger.debug(msg)
+
+    def _format_report(self, report):
+        repo = report.copy()
+        repo.pop('directory', None)
+        lines = []
+        for inst, rep in repo.items():
+            lines.append(inst)
+            lines.extend(rep['info'])
+            lines.append('')
+        return '\n'.join(lines)
+
 
     @staticmethod
     def _write_latest_config(config):
         with open(pathlib.Path(DIRECTORY, 'latest_config.yaml'), 'w') as fid:
             yaml.dump(config, fid)
 
-    @staticmethod
-    def _run_with_config(config):
+    def _run_with_config(self, config):
         sdm = SveaDataManager.from_config(config)
         sdm.read_packages()
         sdm.write_packages()
+        report_dir = pathlib.Path(DIRECTORY, 'reports')
+        report_dir.mkdir(parents=True, exist_ok=True)
+        sdm.write_report(report_dir)
+        report = sdm.get_report()
+        report['directory'] = report_dir
+        return report
+        # messagebox.showinfo('Arkivering klar!', f'Arkiveringen av instrument {", ".join(config.keys())} är färdig\n'
+        #                                         f'Se rapport under: {report_dir}')
+
+    #     self._report = sdm.get_report_text()
+    #     self._show_report_frame()
+    #
+    # def _show_report_frame(self):
+    #     if not self._report:
+    #         pass
+    #     self._report_frame = tk.Toplevel(self)
+    #     r = 0
+    #     for inst, text in self._report.items():
+    #         tk.Label(self._report_frame, text=text).grid(row=r, column=0, padx=10, pady=10, sticky='nsew')
+    #         r += 1
+    #     grid_configure(self._report_frame, nr_rows=r)
 
 
 def grid_configure(frame, nr_rows=1, nr_columns=1, **kwargs):

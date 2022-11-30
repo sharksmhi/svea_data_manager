@@ -42,11 +42,33 @@ class InstrumentLogger:
     def add_declined(self, info):
         self._declined.add(str(info))
 
+    def get_report(self) -> dict:
+        """Returns a dictionary with report information"""
+        data = dict(
+            info=self._info,
+            accepted=self._accepted,
+            declined=self._declined
+        )
+        return data
+
+    def get_report_text(self) -> str:
+        """Returns a report as string"""
+        lines = [self.name]
+        lines.extend(self._info)
+        lines.append('')
+        lines.append('Declined files')
+        lines.extend(self._declined)
+        lines.append('')
+        lines.append('Accepted files')
+        lines.extend(self._accepted)
+        return '\n'.join(lines)
+
     def write_report(self, directory):
         date_str = self._time.strftime('%Y%m%d%H%M')
         self._write_accepted(Path(directory, f'{self.name}_{date_str}_accepted.txt'))
         self._write_declined(Path(directory, f'{self.name}_{date_str}_declined.txt'))
         self._write_info(Path(directory, f'{self.name}_{date_str}_info.txt'))
+        return
 
     def _write_info(self, path):
         with open(path, 'w') as fid:
@@ -169,8 +191,14 @@ class Instrument:
             for file in found_files if file.is_file()
         ]
 
+    def get_report(self):
+        return self._instrument_logger.get_report()
+
+    def get_report_text(self):
+        return self._instrument_logger.get_report_text()
+
     def write_report(self, directory):
-        self._instrument_logger.write_report(directory)
+        return self._instrument_logger.write_report(directory)
 
     ImproperlyConfigured = exceptions.ImproperlyConfiguredInstrument
     PackagesNotExtracted = exceptions.PackagesNotExtracted

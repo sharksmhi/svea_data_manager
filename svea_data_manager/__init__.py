@@ -83,6 +83,18 @@ class SveaDataManager:
         # Step 3 - load packages for each registered instrument.
         self.write_packages()
 
+    def get_report(self):
+        report = {}
+        for name, inst in self._instruments.items():
+            report[name] = inst.get_report()
+        return report
+
+    def get_report_text(self):
+        report = {}
+        for name, inst in self._instruments.items():
+            report[name] = inst.get_report_text()
+        return report
+
     def write_report(self, directory):
         for inst in self._instruments.values():
             inst.write_report(directory)
