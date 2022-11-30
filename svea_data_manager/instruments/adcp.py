@@ -72,6 +72,9 @@ class ADCP(Instrument):
             resource = ADCPResourceReadme.from_source_file(self.source_directory, source_file)
         # if not resource.attributes['instrument'].startswith('ADCP'):
         #     resource.attributes['instrument'] = 'ADCP' + resource.attributes['instrument']
+        if not resource:
+            return
+
         self._set_ship(resource)
         self._set_cruise(resource)
         return resource
@@ -181,7 +184,12 @@ class ADCPResourceRaw(ADCPResource):
         re.compile('^{}_SMHI_{}_{}_{}$'.format('(?P<instrument>\w+)',
                                                 '(?P<month_string>\D+)',
                                                 '(?P<year>\d{4})',
-                                                '(?P<nr>.+)'))
+                                                '(?P<nr>.+)')),
+        # ADCPOS150_SMHI_Aug2022_013003_000000
+        re.compile('^{}_SMHI_{}{}_{}$'.format('(?P<instrument>\w+)',
+                                               '(?P<month_string>\D+)',
+                                               '(?P<year>\d{4})',
+                                               '(?P<nr>.+)'))
 
     ]
 
