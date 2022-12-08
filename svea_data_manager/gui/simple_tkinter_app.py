@@ -13,6 +13,7 @@ import yaml
 from yaml import SafeLoader
 
 from svea_data_manager import SveaDataManager
+from svea_data_manager.sdm_logger import SDMLogger
 
 logger = logging.getLogger(__file__)
 
@@ -27,7 +28,7 @@ class App(tk.Tk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        tk.Tk.wm_title(self, 'Svea data manager')
+        tk.Tk.wm_title(self, 'Svea Data Manager')
 
         self._stringvars_source_directory = {}
         self._stringvar_config = tk.StringVar()
@@ -45,6 +46,8 @@ class App(tk.Tk):
 
         self._setup_logger()
 
+        self._logger = SDMLogger()
+
         self._create_config_stringvars()
         self._build()
         self._startup()
@@ -53,7 +56,12 @@ class App(tk.Tk):
     def _default_config_path(self):
         for path in DIRECTORY.iterdir():
             if path.name.startswith('config'):
+                logger.debug(f'Default config path is: {path}')
                 return path
+
+    @property
+    def _report_directory(self):
+        return pathlib.Path(DIRECTORY, 'reports')
 
     def _startup(self):
         if not self._default_config_path.exists():
@@ -308,16 +316,32 @@ class App(tk.Tk):
                 return
         self._write_latest_config(self._config)
         try:
-            report = self._run_with_config(self._config)
+            report_dir = self._run_with_config(self._config)
+            nr_accepted_str = '\n'.join(
+                [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_resources_added().items()])
+            nr_rejected_str = '\n'.join(
+                [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_resources_rejected().items()])
+            nr_transformed_str = '\n'.join(
+                [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_transform_added_files().items()])
+            nr_copied_str = '\n'.join(
+                [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_files_copied().items()])
+            nr_not_copied_str = '\n'.join(
+                [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_target_path_exists().items()])
+
+            msg = f'Hanteringen är klar för samtliga instrument. ' \
+                  f'Antal filer som hanterats: \n{nr_accepted_str}\n\n' \
+                  f'Antal filer som inte hanterats: \n{nr_rejected_str}\n\n' \
+                  f'Antal filer som lagts till under prosessen: \n{nr_transformed_str}\n\n' \
+                  f'Antal filer som kopierats: \n{nr_copied_str}\n\n' \
+                  f'Antal filer som inte kopierats: \n{nr_not_copied_str}\n\n' \
+                  f'Se fullständig rapport under: {report_dir}.'
+            messagebox.showinfo('Hanterar alla instrument', msg)
+            logger.debug(msg)
         except Exception as e:
             messagebox.showerror('Något gick fel', f'{e}\n\n{traceback.format_exc()}')
             logger.critical(e)
             logger.critical(traceback.format_exc())
             raise
-        msg = f'Hanteringen är klar för samtliga instrument. Se rapport under: {report["directory"]}.\n\n' \
-              f'{self._format_report(report)}'
-        messagebox.showinfo('Hanterar alla instrument', msg)
-        logger.debug(msg)
 
     def _run_instrument(self, inst, show_message=False):
         self._add_attributes_to_config()
@@ -332,28 +356,21 @@ class App(tk.Tk):
         config = {inst: data}
         self._write_latest_config(config)
         try:
-            report = self._run_with_config(config)
+            report_dir = self._run_with_config(config)
+            msg = f'Hanteringen är klar för instrument: {inst.upper()}. \n\n' \
+                  f'Antal filer som hanterats: {self._logger.get_nr_resources_added(inst)}\n' \
+                  f'Antal filer som inte hanterats: {self._logger.get_nr_resources_rejected(inst)}\n' \
+                  f'Antal filer som lagts till under prosessen: {self._logger.get_nr_transform_added_files(inst)}\n' \
+                  f'Antal filer som kopierats: {self._logger.get_nr_files_copied(inst)}\n' \
+                  f'Antal filer som inte kopierats: {self._logger.get_nr_target_path_exists(inst)}\n\n' \
+                  f'Se fullständig rapport under: {report_dir}.'
+            messagebox.showinfo('Hanterar alla instrument', msg)
+            logger.debug(msg)
         except Exception as e:
             messagebox.showerror('Något gick fel', f'{e}\n\n{traceback.format_exc()}')
             logger.critical(e)
             logger.critical(traceback.format_exc())
             raise
-
-        msg = f'Hanteringen är klar för instrument: {inst.upper()}. Se rapport under: {report["directory"]}.\n\n' \
-              f'{self._format_report(report)}'
-        messagebox.showinfo('Hanterar alla instrument', msg)
-        logger.debug(msg)
-
-    def _format_report(self, report):
-        repo = report.copy()
-        repo.pop('directory', None)
-        lines = []
-        for inst, rep in repo.items():
-            lines.append(inst)
-            lines.extend(rep['info'])
-            lines.append('')
-        return '\n'.join(lines)
-
 
     @staticmethod
     def _write_latest_config(config):
@@ -363,13 +380,10 @@ class App(tk.Tk):
     def _run_with_config(self, config):
         sdm = SveaDataManager.from_config(config)
         sdm.read_packages()
+        sdm.transform_packages()
         sdm.write_packages()
-        report_dir = pathlib.Path(DIRECTORY, 'reports')
-        report_dir.mkdir(parents=True, exist_ok=True)
-        sdm.write_report(report_dir)
-        report = sdm.get_report()
-        report['directory'] = report_dir
-        return report
+        report_dir = self._logger.write_reports(self._report_directory)
+        return report_dir
         # messagebox.showinfo('Arkivering klar!', f'Arkiveringen av instrument {", ".join(config.keys())} är färdig\n'
         #                                         f'Se rapport under: {report_dir}')
 

@@ -4,7 +4,7 @@ import string
 import yaml
 
 from svea_data_manager.frameworks import Instrument
-
+from svea_data_manager.sdm_event import post_event
 from svea_data_manager.frameworks import helpers
 
 import logging
@@ -35,6 +35,7 @@ class SveaDataManager:
             raise ValueError(msg)
         
         self._instruments[instrument_type] = instrument
+        post_event('log', dict(msg=f'Instrument registered: {instrument_type}'))
     
     def unregister_instrument(self, instrument):
         if not isinstance(instrument, Instrument):
@@ -55,49 +56,39 @@ class SveaDataManager:
                 msg = f'Given instance of instrument is not a registered instrument, neither are any other instance of {instrument_type}.'
                 logger.error(msg)
                 raise ValueError(msg)
-        
+
         del self._instruments[instrument_type]
+
+        post_event('log', dict(msg=f'Instrument unregistered: {instrument_type}'))
  
     @property
     def instruments(self):
         return list(self._instruments.values())
 
     def read_packages(self, **kwargs):
+        post_event('log', dict(msg=f'Reading packages...'))
         for instrument in self.instruments:
             instrument.read_packages(**kwargs)
 
     def transform_packages(self, **kwargs):
+        post_event('log', dict(msg=f'Transforming packages...'))
         for instrument in self.instruments:
             instrument.transform_packages(**kwargs)
 
     def write_packages(self):
+        post_event('log', dict(msg=f'Writing packages...'))
         for instrument in self.instruments:
             instrument.write_packages()
         helpers.clear_temp_dir()
 
     def run(self):
+        post_event('log', dict(msg=f'Running all'))
         # Step 1 - extract packages for each registered instrument.
         self.read_packages()
         # Step 2 - transform packages for each registered instrument.
         self.transform_packages()
         # Step 3 - load packages for each registered instrument.
         self.write_packages()
-
-    def get_report(self):
-        report = {}
-        for name, inst in self._instruments.items():
-            report[name] = inst.get_report()
-        return report
-
-    def get_report_text(self):
-        report = {}
-        for name, inst in self._instruments.items():
-            report[name] = inst.get_report_text()
-        return report
-
-    def write_report(self, directory):
-        for inst in self._instruments.values():
-            inst.write_report(directory)
 
     @classmethod
     def from_config(cls, config):
@@ -123,7 +114,6 @@ class SveaDataManager:
     @classmethod
     def from_yaml(cls, config_path, config_vars={}):
         config_content = ''
-
         with open(config_path, 'r', encoding='utf8') as config_file:
             config_content = config_file.read()
 

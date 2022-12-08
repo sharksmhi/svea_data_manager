@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class Package:
 
-    def __init__(self, package_key):
+    def __init__(self, package_key, instrument=None):
         if type(package_key) is not str:
             msg = 'package_key must be of type string, not {}.'.format(type(package_key))
             logger.error(msg)
@@ -19,10 +19,15 @@ class Package:
             raise ValueError(msg)
 
         self._package_key = package_key
+        self._instrument = instrument
         self._resources = ResourceCollection()
 
     def __str__(self):
         return self._package_key
+
+    @property
+    def instrument(self):
+        return self._instrument
 
     @property
     def resources(self):

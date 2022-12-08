@@ -5,82 +5,9 @@ import datetime
 from svea_data_manager.frameworks import PackageCollection, Package
 from svea_data_manager.frameworks import Resource
 from svea_data_manager.frameworks import exceptions
+from svea_data_manager.sdm_event import post_event
 
 logger = logging.getLogger(__name__)
-
-
-class InstrumentLogger:
-    def __init__(self, name):
-        self.name = name
-        self._info = []
-        self._accepted = set()
-        self._declined = set()
-        self._time = datetime.datetime.now()
-        self.start()
-
-    @property
-    def accepted_resources(self):
-        return self._accepted
-
-    @property
-    def declined_resources(self):
-        return self._declined
-
-    def start(self):
-        self._info.append(f'Start at: {self._time}')
-
-    def stop(self):
-        time = datetime.datetime.now()
-        self._info.append(f'Stop at: {time}')
-        self._info.append(f'Finished in: {str(time - self._time)}')
-        self._info.append(f'Nr accepted files: {len(self._accepted)}')
-        self._info.append(f'Nr declined files: {len(self._declined)}')
-
-    def add_accepted(self, info):
-        self._accepted.add(str(info))
-
-    def add_declined(self, info):
-        self._declined.add(str(info))
-
-    def get_report(self) -> dict:
-        """Returns a dictionary with report information"""
-        data = dict(
-            info=self._info,
-            accepted=self._accepted,
-            declined=self._declined
-        )
-        return data
-
-    def get_report_text(self) -> str:
-        """Returns a report as string"""
-        lines = [self.name]
-        lines.extend(self._info)
-        lines.append('')
-        lines.append('Declined files')
-        lines.extend(self._declined)
-        lines.append('')
-        lines.append('Accepted files')
-        lines.extend(self._accepted)
-        return '\n'.join(lines)
-
-    def write_report(self, directory):
-        date_str = self._time.strftime('%Y%m%d%H%M')
-        self._write_accepted(Path(directory, f'{self.name}_{date_str}_accepted.txt'))
-        self._write_declined(Path(directory, f'{self.name}_{date_str}_declined.txt'))
-        self._write_info(Path(directory, f'{self.name}_{date_str}_info.txt'))
-        return
-
-    def _write_info(self, path):
-        with open(path, 'w') as fid:
-            fid.write('\n'.join(self._info))
-
-    def _write_accepted(self, path):
-        with open(path, 'w') as fid:
-            fid.write('\n'.join(sorted(self._accepted)))
-
-    def _write_declined(self, path):
-        with open(path, 'w') as fid:
-            fid.write('\n'.join(sorted(self._declined)))
 
 
 class Instrument:
@@ -103,7 +30,6 @@ class Instrument:
             logger.error(msg)
             raise exceptions.ImproperlyConfiguredInstrument(msg)
 
-        self._instrument_logger = InstrumentLogger(self.name)
         self._config = config
         self._packages = None
 
@@ -117,11 +43,11 @@ class Instrument:
             resource = self.prepare_resource(source_file)
 
             if not isinstance(resource, Resource):
-                self._instrument_logger.add_declined(source_file)
                 logger.warning(
                     "Don't know how to handle source file: %s. "
                     "Skipping file." % source_file
                 )
+                post_event('on_resource_rejected', dict(instrument=self.name, path=source_file))
                 continue
 
             package_key = self.get_package_key_for_resource(resource)
@@ -134,7 +60,7 @@ class Instrument:
                 logger.info(f'New package for added to PackageCollection: {package}')
 
             package.resources.add(resource)
-            self._instrument_logger.add_accepted(source_file)
+            post_event('on_resource_added', dict(instrument=self.name, resource=resource, path=source_file))
 
     def transform_packages(self, **kwargs):
         for package in self.packages:
@@ -143,7 +69,7 @@ class Instrument:
     def write_packages(self):
         for package in self.packages:
             self.write_package(package)
-        self._instrument_logger.stop()
+        post_event('on_stop_write', dict(time=datetime.datetime.now()))
 
     def get_package_key_for_resource(self, resource):
         return resource.source_path.stem
@@ -152,7 +78,7 @@ class Instrument:
         return Resource(self.source_directory, source_file)
 
     def prepare_package(self, package_key):
-        return Package(package_key)
+        return Package(package_key, instrument=self.name)
 
     def transform_package(self, package, **kwargs):
         return
@@ -190,15 +116,6 @@ class Instrument:
             file.relative_to(self.source_directory)
             for file in found_files if file.is_file()
         ]
-
-    def get_report(self):
-        return self._instrument_logger.get_report()
-
-    def get_report_text(self):
-        return self._instrument_logger.get_report_text()
-
-    def write_report(self, directory):
-        return self._instrument_logger.write_report(directory)
 
     ImproperlyConfigured = exceptions.ImproperlyConfiguredInstrument
     PackagesNotExtracted = exceptions.PackagesNotExtracted

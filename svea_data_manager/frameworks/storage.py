@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 
 from svea_data_manager.frameworks import Package
 from svea_data_manager.frameworks import exceptions
+from svea_data_manager.sdm_event import post_event
 
 logger = logging.getLogger(__name__)
 
@@ -62,20 +63,26 @@ class FileStorage(Storage):
 
         # first iteration: extract files to copy and check for existence.
         for resource in package.resources:
+            instrument = package.instrument
             absolute_source_path = resource.absolute_source_path
             absolute_target_path = self._resolve_path(resource.target_path)
+            # if absolute_source_path.suffix == '.txt':
+            #     print(f'={absolute_source_path=}')
+            #     print(f'={absolute_target_path=}')
+            #     print(f'={absolute_target_path.exists()=}')
 
             if not force and absolute_target_path.exists():
-                msg = f'Will not write file. Resource with target path {resource.target_path} already exists.'
+                msg = f'Will not write file. Resource with target path {absolute_target_path} already exists.'
                 logger.warning(msg)
+                post_event('on_target_path_exists', dict(instrument=instrument, path=absolute_target_path))
                 continue
 
             files_to_copy.append(
-                (absolute_source_path, absolute_target_path)
+                (absolute_source_path, absolute_target_path, instrument)
             )
 
             # if not force and absolute_target_path.exists():
-            #     msg = f'resource with target path {resource.target_path} already exists.'
+            #     msg = f'resource with target path {resource.target_path} alrelatitudeady exists.'
             #     logger.error(msg)
             #     raise exceptions.ResourceAlreadyInStorage(msg)
             #
@@ -85,10 +92,13 @@ class FileStorage(Storage):
 
         # second iteration: write extracted files to target.
         copied_files = []
-        for source_path, target_path in files_to_copy:
+        for source_path, target_path, inst in files_to_copy:
             os.makedirs(target_path.parent, exist_ok=True)
             copied_file = shutil.copyfile(source_path, target_path)
             copied_files.append(copied_file)
+            post_event('on_file_copied', dict(instrument=inst,
+                                              source_path=source_path,
+                                              target_path=target_path))
 
         return copied_files
 
