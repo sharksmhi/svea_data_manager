@@ -430,7 +430,7 @@ class FletApp:
 
     def _enable_toggle_buttons(self):
         for btn in self._toggle_buttons:
-            btn.disabled = True
+            btn.disabled = False
 
     def _write_report(self):
         report_dir = self._logger.write_reports(self._report_directory)
