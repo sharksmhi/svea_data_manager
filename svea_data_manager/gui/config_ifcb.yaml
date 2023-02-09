@@ -1,6 +1,0 @@
-ifcb:
-  source_directory: D:\IFCB_Kristie\IFCB_Cruise_all_data\data
-  target_directory: C:\mw\temmp\test_sdm_storage\ifcb
-  attributes:
-    ship: '77SE'
-    comment: null

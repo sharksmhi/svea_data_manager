@@ -66,20 +66,26 @@ class SveaDataManager:
         return list(self._instruments.values())
 
     def read_packages(self, **kwargs):
+        post_event('before_read_packages')
         post_event('log', dict(msg=f'Reading packages...'))
         for instrument in self.instruments:
             instrument.read_packages(**kwargs)
+        post_event('after_read_packages')
 
     def transform_packages(self, **kwargs):
+        post_event('before_transform_packages')
         post_event('log', dict(msg=f'Transforming packages...'))
         for instrument in self.instruments:
             instrument.transform_packages(**kwargs)
+        post_event('after_transform_packages')
 
     def write_packages(self):
+        post_event('before_write_packages')
         post_event('log', dict(msg=f'Writing packages...'))
         for instrument in self.instruments:
             instrument.write_packages()
         helpers.clear_temp_dir()
+        post_event('after_write_packages')
 
     def run(self):
         post_event('log', dict(msg=f'Running all'))

@@ -92,13 +92,17 @@ class FileStorage(Storage):
 
         # second iteration: write extracted files to target.
         copied_files = []
-        for source_path, target_path, inst in files_to_copy:
+        nr_files_to_copy = len(files_to_copy)
+        for nr, (source_path, target_path, inst) in enumerate(files_to_copy):
             os.makedirs(target_path.parent, exist_ok=True)
             copied_file = shutil.copyfile(source_path, target_path)
             copied_files.append(copied_file)
-            post_event('on_file_copied', dict(instrument=inst,
+            post_event('on_file_storage_copied', dict(instrument=inst,
                                               source_path=source_path,
-                                              target_path=target_path))
+                                              target_path=target_path,
+                                              nr_files_total=nr_files_to_copy,
+                                              nr_files_copied=nr + 1
+                                              ))
 
         return copied_files
 
@@ -169,7 +173,8 @@ class SubversionStorage(Storage):
         # second iteration: build up multi command transaction (put, mkdir, etc).
         multi_command = []
         commited_additions = []
-        for source_path, target_path in files_to_add:
+        nr_files = len(files_to_add)
+        for nr, (source_path, target_path) in enumerate(files_to_add):
 
             # schedule mkdir action for target's missing parents (if any).
             parent_path = None
@@ -185,10 +190,33 @@ class SubversionStorage(Storage):
             # schedule put action for target.
             multi_command = multi_command + ['put', str(source_path), str(target_path)]
             commited_additions.append(target_path)
+            post_event('on_svn_storage_prepared',
+                       dict(instrument=package.instrument,
+                            source_path=source_path,
+                            target_path=target_path,
+                            nr_files_total=nr_files,
+                            nr_files_copied=nr
+                            ))
+
+        post_event('on_svn_storage_progress',
+                   dict(instrument=package.instrument,
+                                          source_path=True,
+                                          target_path=True,
+                                          nr_files_total=10,
+                                          nr_files_copied=2
+                                          ))
 
         # run multi-command: commit
         commit_message = 'Add files for package: %s' % package
         self._run_svn_multi_command(*multi_command, commit_message=commit_message)
+
+        post_event('on_svn_storage_progress',
+                   dict(instrument=package.instrument,
+                        source_path=True,
+                        target_path=True,
+                        nr_files_total=10,
+                        nr_files_copied=10
+                        ))
 
         return commited_additions
 

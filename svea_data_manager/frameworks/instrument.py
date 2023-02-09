@@ -47,7 +47,7 @@ class Instrument:
                     "Don't know how to handle source file: %s. "
                     "Skipping file." % source_file
                 )
-                post_event('on_resource_rejected', dict(instrument=self.name, path=source_file))
+                post_event('on_resource_rejected', dict(instrument=self.name, path=Path(self.source_directory, source_file)))
                 continue
 
             package_key = self.get_package_key_for_resource(resource)
@@ -60,7 +60,7 @@ class Instrument:
                 logger.info(f'New package for added to PackageCollection: {package}')
 
             package.resources.add(resource)
-            post_event('on_resource_added', dict(instrument=self.name, resource=resource, path=source_file))
+            post_event('on_resource_added', dict(instrument=self.name, resource=resource, path=resource.absolute_source_path))
 
     def transform_packages(self, **kwargs):
         for package in self.packages:

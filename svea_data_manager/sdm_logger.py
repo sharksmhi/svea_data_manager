@@ -1,12 +1,26 @@
 from svea_data_manager.sdm_event import subscribe
 from pathlib import Path
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SDMLogger:
 
-    def __init__(self):
+    def __init__(self, file_copied_callback=None, svn_prepared_callback=None):
 
+        self._file_copied_callback = file_copied_callback
+        self._svn_prepared_callback = svn_prepared_callback
+        self._setup_callbacks()
+
+        self._add_subscriptions()
+
+    def reset(self):
+        self._setup_callbacks()
+        logger.debug('SDMLogger is reset!')
+
+    def _setup_callbacks(self):
         self._callbacks = dict(
             resources_added={},
             resources_rejected={},
@@ -14,22 +28,31 @@ class SDMLogger:
             target_path_exists={},
             transform_added_files={},
             files_copied={},
-            log=[]
+            svn_prepared={},
+            log=[],
+            before_read_packages={},
+            after_read_packages={},
+            before_transform_packages={},
+            after_transform_packages={},
+            before_erite_packages={},
+            after_erite_packages={},
         )
-
-        self._add_subscriptions()
 
     def _add_subscriptions(self):
         subscribe('on_resource_added', self._on_resource_added)
         subscribe('on_resource_rejected', self._on_resource_rejected)
         subscribe('on_target_path_exists', self._on_target_path_exists)
-        subscribe('on_file_copied', self._on_file_copied)
+        subscribe('on_file_storage_copied', self._on_file_copied)
+        subscribe('on_svn_storage_prepared', self._on_svn_prepared)
         subscribe('on_transform_add_file', self.on_transform_add_file)
         subscribe('log', self._on_log)
+        subscribe('on_file_storage_copied', self._on_file_storage_copy)
+        subscribe('on_svn_storage_progress', self._on_svn_storage_progress)
 
     def _on_resource_added(self, data):
         self._callbacks['resources_added'].setdefault(data['instrument'].upper(), [])
-        self._callbacks['resources_added'][data['instrument'].upper()].append(data['path'])
+        self._callbacks['resources_added'][data['instrument'].upper()].append(f"{data['path']} - "
+                                                                              f"{data['resource'].__class__.__name__}")
 
     def _on_resource_rejected(self, data):
         self._callbacks['resources_rejected'].setdefault(data['instrument'], [])
@@ -47,8 +70,20 @@ class SDMLogger:
         self._callbacks['files_copied'].setdefault(data['instrument'].upper(), [])
         self._callbacks['files_copied'][data['instrument'].upper()].append(data['target_path'])
 
+    def _on_svn_prepared(self, data):
+        self._callbacks['svn_prepared'].setdefault(data['instrument'].upper(), [])
+        self._callbacks['svn_prepared'][data['instrument'].upper()].append(data['target_path'])
+
     def _on_log(self, data):
         self._callbacks['log'].append(data['msg'])
+
+    def _on_file_storage_copy(self, data):
+        if self._file_copied_callback:
+            self._file_copied_callback(data)
+
+    def _on_svn_storage_progress(self, data):
+        if self._svn_prepared_callback:
+            self._svn_prepared_callback(data)
 
     def get_resources_added(self, instrument=None):
         if instrument:
@@ -109,6 +144,12 @@ class SDMLogger:
             return self._get_len(self._callbacks['files_copied'].get(instrument.upper()))
         else:
             return dict((key, len(values)) for key, values in self._callbacks['files_copied'].items())
+
+    def get_nr_svn_prepared(self, instrument=None):
+        if instrument:
+            return self._get_len(self._callbacks['svn_prepared'].get(instrument.upper()))
+        else:
+            return dict((key, len(values)) for key, values in self._callbacks['svn_prepared'].items())
 
     def write_reports(self, directory):
         root_directory = Path(directory, datetime.datetime.now().strftime('%Y%m%d_%H%M'))

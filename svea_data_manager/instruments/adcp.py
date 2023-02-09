@@ -66,6 +66,7 @@ class ADCP(Instrument):
 
     def prepare_resource(self, source_file):
         resource = ADCPResourceProcessed.from_source_file(self.source_directory, source_file)
+        print(f'{resource=}')
         if not resource:
             resource = ADCPResourceRaw.from_source_file(self.source_directory, source_file)
         if not resource:
@@ -80,20 +81,22 @@ class ADCP(Instrument):
         return resource
 
     def _set_ship(self, resource):
-        if not resource.attributes.get('ship'):
-            # if not self.config.get('attributes', {}).get('ship'):
-            #     msg = f'No ship information for file {resource.absolute_source_path}'
-            #     logger.error(msg)
-            #     raise exceptions.ShipError(msg)
-            resource.attributes['ship'] = self.config.get('attributes', {}).get('ship', None)
+        resource.attributes['ship'] = self.config.get('attributes', {}).get('ship', None)
+        # if not resource.attributes.get('ship'):
+        #     # if not self.config.get('attributes', {}).get('ship'):
+        #     #     msg = f'No ship information for file {resource.absolute_source_path}'
+        #     #     logger.error(msg)
+        #     #     raise exceptions.ShipError(msg)
+        #     resource.attributes['ship'] = self.config.get('attributes', {}).get('ship', None)
 
     def _set_cruise(self, resource):
-        if not resource.attributes.get('cruise'):
-            # if not self.config.get('attributes', {}).get('cruise'):
-            #     msg = f'No cruise information for file {resource.absolute_source_path}'
-            #     logger.error(msg)
-            #     raise exceptions.ShipError(msg)
-            resource.attributes['cruise'] = self.config.get('attributes', {}).get('cruise', None)
+        resource.attributes['cruise'] = self.config.get('attributes', {}).get('cruise', None)
+        # if not resource.attributes.get('cruise'):
+        #     # if not self.config.get('attributes', {}).get('cruise'):
+        #     #     msg = f'No cruise information for file {resource.absolute_source_path}'
+        #     #     logger.error(msg)
+        #     #     raise exceptions.ShipError(msg)
+        #     resource.attributes['cruise'] = self.config.get('attributes', {}).get('cruise', None)
 
     def get_package_key_for_resource(self, resource):
         return resource.package_key
@@ -197,6 +200,7 @@ class ADCPResourceRaw(ADCPResource):
     def target_path(self):
         parts_list = [self.attributes['instrument'], self.attributes['year'], self.package_key, 'raw', self.source_path.name]
         # Assuring instrument sub folder in instrument class
+        print(f'{pathlib.Path(*parts_list)=}')
         return pathlib.Path(*parts_list)
 
     @staticmethod

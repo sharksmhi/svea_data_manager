@@ -168,9 +168,12 @@ class IFCBResourceProcessed(IFCBResource):
 
     @property
     def target_path(self):
+        process_type = self.attributes["process_type"]
+        if process_type == 'fea':
+            process_type = 'features'
         subdir = f"D{self.attributes['year']}{self.attributes['month']}{self.attributes['day']}"
         file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
-        return pathlib.Path(self.attributes['instrument'], f'{self.attributes["process_type"]}',
+        return pathlib.Path(self.attributes['instrument'], f'{process_type}',
                             f"D{self.attributes['year']}", subdir, file_name)
 
     @staticmethod
@@ -261,7 +264,7 @@ class MetadataIFCB:
         key = key.lower()
         if key not in self.metadata and key != 'comment':
             raise KeyError(f'{key} is not a valid metadata')
-        if key == 'comment':
+        if key == 'comment' and value:
             self._metadata['comments'].append(value.replace('\n', ' ') + f' ({datetime.datetime.now().strftime("%Y%m%d")})')
         else:
             self._metadata[key] = value

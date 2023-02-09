@@ -1,6 +1,0 @@
-ifcb:
-  attributes:
-    comment: null
-    ship: 77SE
-  source_directory: D:/IFCB_Kristie/IFCB_Cruise_all_data/blobs/2022
-  target_directory: C:\mw\temmp\test_sdm_storage\ifcb
