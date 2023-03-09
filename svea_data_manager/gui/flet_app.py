@@ -14,6 +14,7 @@ import yaml
 from svea_data_manager import SveaDataManager
 from svea_data_manager.sdm_logger import SDMLogger
 from svea_data_manager import sdm_event
+from svea_data_manager.sdm_event import subscribe
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,10 @@ elif __file__:
     DIRECTORY = pathlib.Path(__file__).parent
 
 # https://colorpalettes.net/color-palette-4553/
-CONFIG_BG_COLOR = '#378BA4'
-DEFAULT_INSTRUMENT_BG_COLOR = '#E8EDE7'
-ATTRIBUTES_COLOR = '#81BECE'
+INSTRUMENT_SECTION_BG_COLOR = '#DFE8CC'
+CONFIG_BG_COLOR = '#DAE2B6'
+DEFAULT_INSTRUMENT_BG_COLOR = '#CCD6A6'
+ATTRIBUTES_COLOR = '#F7EDDB'
 
 MISSING_CONFIG_TEXT = '< Ingen konfigurationsfil vald >'
 MISSING_DATA_ROOT_TEXT = '< Ingen rotkatalog för källdata vald >'
@@ -39,12 +41,20 @@ MISSING_DATA_ROOT_TEXT = '< Ingen rotkatalog för källdata vald >'
 # }
 
 # https://colorpalettes.net/color-palette-4573/
+# INSTRUMENT_BG_COLORS = {
+#     'ifcb': '#AEC670',
+#     'adcp': '#AEC09A',
+#     'ctd': '#778D45',
+#     'mvp': '#344C11',
+#     'ferrybox': '#1A2902',
+# }
+
 INSTRUMENT_BG_COLORS = {
-    'ifcb': '#AEC670',
-    'adcp': '#AEC09A',
-    'ctd': '#778D45',
-    'mvp': '#344C11',
-    'ferrybox': '#1A2902',
+    # 'ifcb': '#DFE8CC',
+    # 'adcp': '#DFE8CC',
+    # 'ctd': '#DFE8CC',
+    # 'mvp': '#DFE8CC',
+    # 'ferrybox': '#DFE8CC',
 }
 
 CLEANUP_LOG_AFTER_NR_DAYS = 1
@@ -91,8 +101,11 @@ class FletApp:
         self.logging_format_stdout = '[%(levelname)10s] %(filename)s: %(funcName)s() [%(lineno)d] %(message)s'
         self._setup_logger()
 
-        self._logger = SDMLogger(file_copied_callback=self._callback_file_storage,
-                                 svn_prepared_callback=self._callback_svn_prepared)
+        self._logger = SDMLogger(report_directory=self._report_directory)
+
+        subscribe('on_file_storage_copied', self._callback_file_storage)
+        subscribe('on_svn_storage_progress', self._callback_svn_prepared)
+        subscribe('on_svn_storage_check_exists', self._callback_svn_prepared)
 
         self._cleanup_reports()
 
@@ -100,6 +113,7 @@ class FletApp:
 
     def main(self, page):
         self.page = page
+        self.page.title = 'Svea Data Manager: Making your data handling easier!'
         self._add_report_bottom_sheet()
         self._build()
         self._initiate_banner()
@@ -153,7 +167,7 @@ class FletApp:
                                              padding=padding)
 
         self.instrument_container = ft.Container(content=self._instrument_listview,
-                                                 bgcolor=DEFAULT_INSTRUMENT_BG_COLOR,
+                                                 bgcolor=INSTRUMENT_SECTION_BG_COLOR,
                                                  padding=padding,
                                                  border_radius=20,
                                                  expand=True)
@@ -196,15 +210,16 @@ class FletApp:
         self.logger.addHandler(handler)
 
     def _cleanup_reports(self):
-        now = datetime.datetime.now()
-        before_time = now - datetime.timedelta(days=CLEANUP_LOG_AFTER_NR_DAYS)
-        for path in self._report_directory.iterdir():
-            if datetime.datetime.fromtimestamp(path.stat().st_mtime) > before_time:
-                continue
-            if path.is_file():
-                os.remove(str(path))
-            else:
-                shutil.rmtree(path)
+        self._logger.cleanup_reports(nr_days_old=CLEANUP_LOG_AFTER_NR_DAYS)
+        # now = datetime.datetime.now()
+        # before_time = now - datetime.timedelta(days=CLEANUP_LOG_AFTER_NR_DAYS)
+        # for path in self._report_directory.iterdir():
+        #     if datetime.datetime.fromtimestamp(path.stat().st_mtime) > before_time:
+        #         continue
+        #     if path.is_file():
+        #         os.remove(str(path))
+        #     else:
+        #         shutil.rmtree(path)
 
     @property
     def _report_directory(self):
@@ -413,6 +428,8 @@ class FletApp:
         if not config:
             self._show_info('Du har inte angivig källmapp för något instrument!')
             return
+        self._progress_bars[inst.upper()].value = 0.1
+        self.update_page()
         sdm = SveaDataManager.from_config(config)
         sdm.read_packages()
         sdm.transform_packages()
@@ -421,7 +438,7 @@ class FletApp:
         self._show_result_ok(report_dir)
 
         for ins in config:
-            self._progress_bars[ins].value = 0
+            self._progress_bars[ins.upper()].value = 0
         self.update_page()
 
     def _disable_toggle_buttons(self):
@@ -466,7 +483,7 @@ class FletApp:
                                                          directory)))
         button_row.controls.append(ft.ElevatedButton('OK',
                                                      on_click=self._close_report_bottom_sheet))
-        lv.controls.append(button_row)
+        # lv.controls.append(button_row)  # This does not work in executable. Opens new instance instead
 
         ok_color = 'black'
         bad_color = 'red'
@@ -501,7 +518,7 @@ class FletApp:
                                                          directory)))
         button_row.controls.append(ft.ElevatedButton('OK',
                                                      on_click=self._close_report_bottom_sheet))
-        lv.controls.append(button_row)
+        # lv.controls.append(button_row) # This does not work in executable. Opens new instance instead
         self._report_container.content = lv
         self._report_bottom_sheet.open = True
         self._report_bottom_sheet.update()
@@ -591,6 +608,10 @@ class FletApp:
         self._enable_toggle_buttons()
 
 
-if __name__ == '__main__':
+def main():
     app = FletApp()
+
+
+if __name__ == '__main__':
+    main()
 

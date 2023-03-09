@@ -1,0 +1,27 @@
+CTD:
+  source_directory: 
+  subversion_repo_url: https://sharkdata-svn-tst.smhi.se/repos/data/ctd
+  force: true
+
+MVP:
+  source_directory: 
+  subversion_repo_url: https://sharkdata-svn-tst.smhi.se/repos/data/mvp
+  force: true
+
+ADCP:
+  source_directory:
+  target_directory: \\winfs-proj\data\proj\sharknet\test_data_storage\adcp
+  attributes:
+    ship: "77SE"
+    cruise:
+
+FERRYBOX:
+  source_directory:
+  target_directory: \\winfs-proj\data\proj\sharknet\test_data_storage\ferrybox
+
+IFCB:
+  source_directory:
+  target_directory: \\winfs-proj\data\proj\sharknet\test_data_storage\ifcb
+  attributes:
+    ship: '77SE'
+    comment:

@@ -1,3 +1,6 @@
+import os
+import shutil
+
 from svea_data_manager.sdm_event import subscribe
 from pathlib import Path
 import datetime
@@ -8,10 +11,11 @@ logger = logging.getLogger(__name__)
 
 class SDMLogger:
 
-    def __init__(self, file_copied_callback=None, svn_prepared_callback=None):
+    def __init__(self, file_copied_callback=None, svn_prepared_callback=None, report_directory=None):
 
-        self._file_copied_callback = file_copied_callback
-        self._svn_prepared_callback = svn_prepared_callback
+        # self._file_copied_callback = file_copied_callback
+        # self._svn_prepared_callback = svn_prepared_callback
+        self._report_directory = report_directory
         self._setup_callbacks()
 
         self._add_subscriptions()
@@ -46,8 +50,6 @@ class SDMLogger:
         subscribe('on_svn_storage_prepared', self._on_svn_prepared)
         subscribe('on_transform_add_file', self.on_transform_add_file)
         subscribe('log', self._on_log)
-        subscribe('on_file_storage_copied', self._on_file_storage_copy)
-        subscribe('on_svn_storage_progress', self._on_svn_storage_progress)
 
     def _on_resource_added(self, data):
         self._callbacks['resources_added'].setdefault(data['instrument'].upper(), [])
@@ -77,13 +79,13 @@ class SDMLogger:
     def _on_log(self, data):
         self._callbacks['log'].append(data['msg'])
 
-    def _on_file_storage_copy(self, data):
-        if self._file_copied_callback:
-            self._file_copied_callback(data)
-
-    def _on_svn_storage_progress(self, data):
-        if self._svn_prepared_callback:
-            self._svn_prepared_callback(data)
+    # def _on_file_storage_copy(self, data):
+    #     if self._file_copied_callback:
+    #         self._file_copied_callback(data)
+    #
+    # def _on_svn_storage_progress(self, data):
+    #     if self._svn_prepared_callback:
+    #         self._svn_prepared_callback(data)
 
     def get_resources_added(self, instrument=None):
         if instrument:
@@ -151,8 +153,11 @@ class SDMLogger:
         else:
             return dict((key, len(values)) for key, values in self._callbacks['svn_prepared'].items())
 
-    def write_reports(self, directory):
-        root_directory = Path(directory, datetime.datetime.now().strftime('%Y%m%d_%H%M'))
+    def write_reports(self, directory=None):
+        self._report_directory = directory or self._report_directory
+        if not self._report_directory:
+            raise Exception('No report directory set')
+        root_directory = Path(self._report_directory, datetime.datetime.now().strftime('%Y%m%d_%H%M'))
         for callback, info in self._callbacks.items():
             if type(info) == list:
                 path = Path(root_directory, f'{callback}.txt')
@@ -166,6 +171,19 @@ class SDMLogger:
                     with open(path, 'w') as fid:
                         fid.write('\n'.join([str(val) for val in values]))
         return root_directory
+
+    def cleanup_reports(self, nr_days_old=5):
+        if not self._report_directory:
+            return
+        now = datetime.datetime.now()
+        before_time = now - datetime.timedelta(days=nr_days_old)
+        for path in self._report_directory.iterdir():
+            if datetime.datetime.fromtimestamp(path.stat().st_mtime) > before_time:
+                continue
+            if path.is_file():
+                os.remove(str(path))
+            else:
+                shutil.rmtree(path)
 
     @staticmethod
     def _get_len(items):

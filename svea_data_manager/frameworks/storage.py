@@ -156,15 +156,29 @@ class SubversionStorage(Storage):
         files_to_add = []
 
         # first iteration: extract files to add and check for existence.
-        for resource in package.resources:
+        nr_files = len(package.resources)
+        for nr, resource in enumerate(package.resources):
+            instrument = package.instrument
             absolute_source_path = resource.absolute_source_path
             relative_target_path = pathlib.PurePosixPath(resource.target_path)
 
+            post_event('on_svn_storage_check_exists',
+                       dict(instrument=package.instrument,
+                            source_path=absolute_source_path,
+                            target_path=relative_target_path,
+                            nr_files_total=nr_files,
+                            nr_files_copied=nr
+                            ))
+
             if not force and relative_target_path in existing_paths:
-                raise exceptions.ResourceAlreadyInStorage(
-                    'resource with target path {} '
-                    'already exists.'.format(relative_target_path)
-                )
+                msg = f'Will not write file. Resource with target path {relative_target_path} already exists.'
+                logger.warning(msg)
+                post_event('on_target_path_exists', dict(instrument=instrument, path=relative_target_path))
+                continue
+                # raise exceptions.ResourceAlreadyInStorage(
+                #     'resource with target path {} '
+                #     'already exists.'.format(relative_target_path)
+                # )
 
             files_to_add.append(
                 (absolute_source_path, relative_target_path)
@@ -197,6 +211,10 @@ class SubversionStorage(Storage):
                             nr_files_total=nr_files,
                             nr_files_copied=nr
                             ))
+
+        if not multi_command:
+            logger.info('No files prepared for svn storage')
+            return
 
         post_event('on_svn_storage_progress',
                    dict(instrument=package.instrument,

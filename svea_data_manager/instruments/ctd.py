@@ -39,7 +39,7 @@ class CTD(Instrument):
 
 
 class CTDResource(Resource):
-    RAW_FILE_SUFFIXES = ['.bl', '.btl', '.hdr', '.hex', '.ros', '.xmlcon', '.xml']
+    RAW_FILE_SUFFIXES = ['.bl', '.btl', '.hdr', '.hex', '.ros', '.xmlcon', '.xml', '.zip']
 
     PATTERNS = [
         re.compile('^{}{}_{}_{}{}{}_{}{}_{}_{}$'.format('(?P<prefix>u|d)?',
@@ -66,6 +66,19 @@ class CTDResource(Resource):
                                                         '(?P<cruise>\d{2})',
                                                         '(?P<serno>\d{4})',
                                                         )
+                   ),
+        re.compile('^{}{}_{}_{}{}{}_{}{}_{}_{}_{}_psa_config$'.format('(?P<prefix>u)?',
+                                                                    '(?P<instrument>SBE\d{2})',
+                                                                    '(?P<instrument_number>\d{4})',
+                                                                    '(?P<year>\d{4})',
+                                                                    '(?P<month>\d{2})',
+                                                                    '(?P<day>\d{2})',
+                                                                    '(?P<hour>\d{2})',
+                                                                    '(?P<minute>\d{2})',
+                                                                    '(?P<ship>\d{2}\w{2})',
+                                                                    '(?P<cruise>\d{2})',
+                                                                    '(?P<serno>\d{4})',
+                                                                    )
                    ),
         ]
 
@@ -106,7 +119,8 @@ class CTDResource(Resource):
             path = pathlib.Path(path, 'raw')
         elif self.source_path.suffix == '.txt':
             pass
-        file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
+        # file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
+        file_name = f'{self.source_path.stem}{self.source_path.suffix.lower()}'
         if self.attributes.get('suffix'):
             file_name = self.attributes['suffix'].lower() + file_name[1:]
         return path.joinpath(file_name)

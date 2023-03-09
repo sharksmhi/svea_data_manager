@@ -6,6 +6,7 @@ _sdm_subscribers = dict(
     on_file_storage_copied={},
     on_svn_storage_prepared={},
     on_svn_storage_progress={},
+    on_svn_storage_check_exists={},
     log={},
     on_transform_add_file={},
     before_read_packages={},
