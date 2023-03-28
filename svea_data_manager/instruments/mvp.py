@@ -45,6 +45,15 @@ class MVPResource(Resource):
                                                       '(?P<minute>\d{2})',
                                                       '(?P<second>\d{2})',
                                                       '(?P<transect>.+-.+)'), re.I),
+        re.compile('^{}{}_{}-{}-{}_{}{}{}_{}$'.format('(?P<prefix>.{1})?',
+                                                      '(?P<instrument>MVP)',  # PROCESSED
+                                                      '(?P<year>\d{4})',
+                                                      '(?P<month>\d{2})',
+                                                      '(?P<day>\d{2})',
+                                                      '(?P<hour>\d{2})',
+                                                      '(?P<minute>\d{2})',
+                                                      '(?P<second>\d{2})',
+                                                      '(?P<transect>.+)'), re.I),
         re.compile('^{}{}_{}-{}-{}_{}{}{}{}$'.format('(?P<prefix>.{1})?',
                                                      '(?P<instrument>MVP)',  # RAWDATA
                                                      '(?P<year>\d{4})',
@@ -53,7 +62,7 @@ class MVPResource(Resource):
                                                      '(?P<hour>\d{2})',
                                                      '(?P<minute>\d{2})',
                                                      '(?P<second>\d{2})',
-                                                     '(?P<ending>_.*)?'))
+                                                     '(?P<ending>_.*)?'), re.I)
 
     ]
 
@@ -94,8 +103,8 @@ class MVPResource(Resource):
         if 'SMHI_' not in path_str:
             return None
         for PATTERN in MVPResource.PATTERNS:
-            name_match = PATTERN.search(source_file.stem)
-
+            name_match = PATTERN.search(source_file.stem.upper())
+            print(f'{name_match=}')
             if name_match:
                 attributes = name_match.groupdict()
                 if not attributes.get('transect') and 'RAWDATA' in source_file.parts:
