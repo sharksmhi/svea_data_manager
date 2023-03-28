@@ -66,7 +66,6 @@ class ADCP(Instrument):
 
     def prepare_resource(self, source_file):
         resource = ADCPResourceProcessed.from_source_file(self.source_directory, source_file)
-        print(f'{resource=}')
         if not resource:
             resource = ADCPResourceRaw.from_source_file(self.source_directory, source_file)
         if not resource:
@@ -90,7 +89,10 @@ class ADCP(Instrument):
         #     resource.attributes['ship'] = self.config.get('attributes', {}).get('ship', None)
 
     def _set_cruise(self, resource):
-        resource.attributes['cruise'] = self.config.get('attributes', {}).get('cruise', None)
+        cruise = self.config.get('attributes', {}).get('cruise', None)
+        if not cruise:
+            return
+        resource.attributes['cruise'] = cruise
         # if not resource.attributes.get('cruise'):
         #     # if not self.config.get('attributes', {}).get('cruise'):
         #     #     msg = f'No cruise information for file {resource.absolute_source_path}'
@@ -200,7 +202,6 @@ class ADCPResourceRaw(ADCPResource):
     def target_path(self):
         parts_list = [self.attributes['instrument'], self.attributes['year'], self.package_key, 'raw', self.source_path.name]
         # Assuring instrument sub folder in instrument class
-        print(f'{pathlib.Path(*parts_list)=}')
         return pathlib.Path(*parts_list)
 
     @staticmethod
@@ -229,10 +230,15 @@ class ADCPResourceProcessed(ADCPResource):
         # re.compile('{}_{}_{}_utdata'.format('(?P<ship>\d{2}\D{2})',
         #                                     '(?P<year>\d{4})',
         #                                     '(?P<cruise>\d{2})')),
+        re.compile('{}_{}_{}_{}_processed'.format('(?P<instrument>ADCP\w+)',
+                                               '(?P<ship>\d{2}\D{2})',
+                                               '(?P<year>\d{4})',
+                                               '(?P<cruise>\d{2})')),
+
         re.compile('{}_{}_{}_{}_utdata'.format('(?P<instrument>ADCP\w+)',
-                                             '(?P<ship>\d{2}\D{2})',
-                                             '(?P<year>\d{4})',
-                                             '(?P<cruise>\d{2})'))
+                                               '(?P<ship>\d{2}\D{2})',
+                                               '(?P<year>\d{4})',
+                                               '(?P<cruise>\d{2})'))
         ]
 
     @property
