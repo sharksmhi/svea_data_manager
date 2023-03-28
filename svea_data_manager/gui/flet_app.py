@@ -255,7 +255,7 @@ class FletApp:
 
     def _set_config_file(self, text=None):
         if not text:
-            text = MISSING_CONFIG_TEXT
+            return
         self._config_path.value = text
         self._load_config_file()
         self._update_gui_from_config()
@@ -269,7 +269,7 @@ class FletApp:
 
     def _pick_config_file(self, e: ft.FilePickerResultEvent):
         if not e.files:
-            self._set_config_file()
+            # self._set_config_file()
             return
         path = e.files[0].path
         self._set_config_file(path)
@@ -506,7 +506,7 @@ class FletApp:
         info_lst.append((f'Antal filer som inte kopierats:', ok_color))
         info_lst.extend(nr_not_copied_str)
         info_lst.append(('', ok_color))
-        info_lst.append((f'Se fullständig rapport under:', ok_color))
+        info_lst.append((f'Se fullständig rapport under: {report_dir}', ok_color))
 
         for info in info_lst:
             lv.controls.append(ft.Text(f'{info[0]}\n', color=info[1]))
