@@ -46,7 +46,7 @@ class SDMLogger:
         subscribe('on_resource_added', self._on_resource_added)
         subscribe('on_resource_rejected', self._on_resource_rejected)
         subscribe('on_target_path_exists', self._on_target_path_exists)
-        subscribe('on_file_storage_copied', self._on_file_copied)
+        subscribe('on_file_copied', self._on_file_copied)
         subscribe('on_svn_storage_prepared', self._on_svn_prepared)
         subscribe('on_transform_add_file', self.on_transform_add_file)
         subscribe('log', self._on_log)
@@ -57,7 +57,7 @@ class SDMLogger:
                                                                               f"{data['resource'].__class__.__name__}")
 
     def _on_resource_rejected(self, data):
-        self._callbacks['resources_rejected'].setdefault(data['instrument'], [])
+        self._callbacks['resources_rejected'].setdefault(data['instrument'].upper(), [])
         self._callbacks['resources_rejected'][data['instrument'].upper()].append(data['path'])
 
     def _on_target_path_exists(self, data):
@@ -83,7 +83,7 @@ class SDMLogger:
     #     if self._file_copied_callback:
     #         self._file_copied_callback(data)
     #
-    # def _on_svn_storage_progress(self, data):
+    # def _on_progress(self, data):
     #     if self._svn_prepared_callback:
     #         self._svn_prepared_callback(data)
 

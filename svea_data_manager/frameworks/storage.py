@@ -58,18 +58,15 @@ class FileStorage(Storage):
             msg = 'Not allowed to force writing to File Storage'
             logger.error(msg)
             raise exceptions.ForceNotAllowed(msg)
-        # list with tuples of (source_path, target_path).
+        # list with tuples of (source_path, target_path, instrument, key).
         files_to_copy = []
 
         # first iteration: extract files to copy and check for existence.
         for resource in package.resources:
             instrument = package.instrument
+            key = str(package)
             absolute_source_path = resource.absolute_source_path
             absolute_target_path = self._resolve_path(resource.target_path)
-            # if absolute_source_path.suffix == '.txt':
-            #     print(f'={absolute_source_path=}')
-            #     print(f'={absolute_target_path=}')
-            #     print(f'={absolute_target_path.exists()=}')
 
             if not force and absolute_target_path.exists():
                 msg = f'Will not write file. Resource with target path {absolute_target_path} already exists.'
@@ -78,31 +75,27 @@ class FileStorage(Storage):
                 continue
 
             files_to_copy.append(
-                (absolute_source_path, absolute_target_path, instrument)
+                (absolute_source_path, absolute_target_path, instrument, key)
             )
-
-            # if not force and absolute_target_path.exists():
-            #     msg = f'resource with target path {resource.target_path} alrelatitudeady exists.'
-            #     logger.error(msg)
-            #     raise exceptions.ResourceAlreadyInStorage(msg)
-            #
-            # files_to_copy.append(
-            #     (absolute_source_path, absolute_target_path)
-            # )
 
         # second iteration: write extracted files to target.
         copied_files = []
         nr_files_to_copy = len(files_to_copy)
-        for nr, (source_path, target_path, inst) in enumerate(files_to_copy):
+        for nr, (source_path, target_path, inst, key) in enumerate(files_to_copy):
             os.makedirs(target_path.parent, exist_ok=True)
             copied_file = shutil.copyfile(source_path, target_path)
             copied_files.append(copied_file)
-            post_event('on_file_storage_copied', dict(instrument=inst,
-                                              source_path=source_path,
-                                              target_path=target_path,
-                                              nr_files_total=nr_files_to_copy,
-                                              nr_files_copied=nr + 1
-                                              ))
+            post_event('on_progress', dict(instrument=inst,
+                                           msg=f'Copying files from package {key} to file storage...',
+                                           percentage=int((nr+1)/nr_files_to_copy*100),
+                                           ))
+            post_event('on_file_copied', dict(instrument=inst,
+                                           msg='Copying files to file storage...',
+                                           source_path=source_path,
+                                           target_path=target_path,
+                                           nr_files_total=nr_files_to_copy,
+                                           nr_files_copied=nr + 1
+                                           ))
 
         return copied_files
 
@@ -128,7 +121,7 @@ class SubversionStorage(Storage):
         pass
 
     class SubversionError(Exception):
-        """An error occured when executing the Subversion binary"""
+        """An error occurred when executing the Subversion binary"""
         pass
 
     def __init__(self, root_url, username=None, password=None):
@@ -162,10 +155,10 @@ class SubversionStorage(Storage):
             absolute_source_path = resource.absolute_source_path
             relative_target_path = pathlib.PurePosixPath(resource.target_path)
 
-            post_event('on_svn_storage_check_exists',
+            post_event('on_progress',
                        dict(instrument=package.instrument,
-                            source_path=absolute_source_path,
-                            target_path=relative_target_path,
+                            msg='Checking file existence in SVN',
+                            percentage=int((nr+1)/nr_files*100),
                             nr_files_total=nr_files,
                             nr_files_copied=nr
                             ))
@@ -216,24 +209,20 @@ class SubversionStorage(Storage):
             logger.info('No files prepared for svn storage')
             return
 
-        post_event('on_svn_storage_progress',
+        post_event('on_progress',
                    dict(instrument=package.instrument,
-                                          source_path=True,
-                                          target_path=True,
-                                          nr_files_total=10,
-                                          nr_files_copied=2
-                                          ))
+                        msg='Starting commit to SVN',
+                        percentage=20,
+                        ))
 
         # run multi-command: commit
         commit_message = 'Add files for package: %s' % package
         self._run_svn_multi_command(*multi_command, commit_message=commit_message)
 
-        post_event('on_svn_storage_progress',
+        post_event('on_progress',
                    dict(instrument=package.instrument,
-                        source_path=True,
-                        target_path=True,
-                        nr_files_total=10,
-                        nr_files_copied=10
+                        msg='Commit to SVN finished',
+                        percentage=100,
                         ))
 
         return commited_additions

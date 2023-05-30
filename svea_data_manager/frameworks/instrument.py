@@ -38,10 +38,14 @@ class Instrument:
 
     def read_packages(self):
         self._packages = PackageCollection()
-
-        for source_file in self.source_files:
+        source_files = self.source_files
+        tot_nr_files = len(source_files)
+        for nr, source_file in enumerate(source_files):
+            post_event('on_progress', dict(instrument=self.name,
+                                           msg='Reading files...',
+                                           percentage=int((nr+1)/tot_nr_files*100)
+                                           ))
             resource = self.prepare_resource(source_file)
-
             if not isinstance(resource, Resource):
                 logger.warning(
                     "Don't know how to handle source file: %s. "
@@ -61,6 +65,10 @@ class Instrument:
 
             package.resources.add(resource)
             post_event('on_resource_added', dict(instrument=self.name, resource=resource, path=resource.absolute_source_path))
+        post_event('on_progress', dict(instrument=self.name,
+                                       msg='Done reading files',
+                                       percentage=100
+                                       ))
 
     def transform_packages(self, **kwargs):
         for package in self.packages:
@@ -111,11 +119,22 @@ class Instrument:
 
     @property
     def source_files(self):
+        post_event('on_progress',
+                   dict(instrument=self.name,
+                        msg='Looking for source files...',
+                        percentage=10,
+                        ))
         found_files = self.source_directory.glob('**/*')
-        return [
+        all_files = [
             file.relative_to(self.source_directory)
             for file in found_files if file.is_file()
         ]
+        post_event('on_progress',
+                   dict(instrument=self.name,
+                        msg='Done looking for source files!',
+                        percentage=100,
+                        ))
+        return all_files
 
     ImproperlyConfigured = exceptions.ImproperlyConfiguredInstrument
     PackagesNotExtracted = exceptions.PackagesNotExtracted

@@ -21,12 +21,12 @@ class Ferrybox(Instrument):
             msg = 'Missing required configuration target_directory.'
             logger.error(msg)
             raise exceptions.ImproperlyConfiguredInstrument(msg)
-        if 'wiski_directory' not in self._config:
-            msg = 'Missing required configuration wiski_directory.'
-            logger.error(msg)
-            raise exceptions.ImproperlyConfiguredInstrument(msg)
+        # if 'wiski_directory' not in self._config:
+        #     msg = 'Missing required configuration wiski_directory.'
+        #     logger.error(msg)
+        #     raise exceptions.ImproperlyConfiguredInstrument(msg)
         self._file_storage = FileStorage(self._config['target_directory'])
-        self._wiski_storage = FileStorage(self._config['wiski_directory'])  # Wiski
+        # self._wiski_storage = FileStorage(self._config['wiski_directory'])  # Wiski
 
     def prepare_resource(self, source_file):
         resource = FerryboxResourceRaw.from_source_file(self.source_directory, source_file)
@@ -38,9 +38,9 @@ class Ferrybox(Instrument):
 
     def prepare_package(self, package_key):
         if 'wiski' in package_key.lower():
-            return FerryboxPackageWiski(package_key)
+            return FerryboxPackageWiski(package_key, instrument=self.name)
         else:
-            return FerryboxPackageStorage(package_key)
+            return FerryboxPackageStorage(package_key, instrument=self.name)
 
     def get_package_key_for_resource(self, resource):
         return resource.package_key
@@ -120,8 +120,14 @@ class FerryboxResourceRaw(Resource):
     
     @staticmethod
     def from_source_file(root_directory, source_file):
-        if 'FERRYBOX' not in str(pathlib.Path(root_directory, source_file)).upper():
+        full_path = pathlib.Path(root_directory, source_file)
+        if 'FERRYBOX' not in str(full_path).upper():
             return None
+        if 'toFTP' in full_path.parts:
+            return None
+        if 'FTP_temp' in full_path.parts:
+            return None
+
         for PATTERN in FerryboxResourceRaw.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
 

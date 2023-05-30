@@ -20,8 +20,10 @@ logger = logging.getLogger(__name__)
 
 if getattr(sys, 'frozen', False):
     DIRECTORY = pathlib.Path(sys.executable).parent
-elif __file__:
+else:
     DIRECTORY = pathlib.Path(__file__).parent
+
+DEFAULT_CONFIG_SAVE_PATH = pathlib.Path(DIRECTORY, 'default_config')
 
 # https://colorpalettes.net/color-palette-4553/
 INSTRUMENT_SECTION_BG_COLOR = '#DFE8CC'
@@ -57,7 +59,7 @@ INSTRUMENT_BG_COLORS = {
     # 'ferrybox': '#DFE8CC',
 }
 
-CLEANUP_LOG_AFTER_NR_DAYS = 1
+CLEANUP_LOG_AFTER_NR_DAYS = 7
 
 
 def get_instrument_bg_color(inst):
@@ -82,6 +84,21 @@ def translate(text):
     return TRANSLATE.get(text, text)
 
 
+def load_default_config():
+    if not DEFAULT_CONFIG_SAVE_PATH.exists():
+        return None
+    with open(DEFAULT_CONFIG_SAVE_PATH) as fid:
+        path = fid.readline().strip()
+        if not path:
+            return None
+        return pathlib.Path(path)
+
+
+def save_default_config(path):
+    with open(DEFAULT_CONFIG_SAVE_PATH, 'w') as fid:
+        fid.write(str(path))
+
+
 class FletApp:
     def __init__(self):
         self.page = None
@@ -89,6 +106,7 @@ class FletApp:
         self._config = {}
         self._attributes = {}
         self._progress_bars = {}
+        self._progress_texts = {}
         self._instrument_items = {}
         self._current_source_instrument = None
 
@@ -103,9 +121,7 @@ class FletApp:
 
         self._logger = SDMLogger(report_directory=self._report_directory)
 
-        subscribe('on_file_storage_copied', self._callback_file_storage)
-        subscribe('on_svn_storage_progress', self._callback_svn_prepared)
-        subscribe('on_svn_storage_check_exists', self._callback_svn_prepared)
+        subscribe('on_progress', self._callback_on_progress)
 
         self._cleanup_reports()
 
@@ -260,16 +276,20 @@ class FletApp:
         self._load_config_file()
         self._update_gui_from_config()
         self.update_page()
+        save_default_config(text)
 
     def _set_default_config(self):
         """Search the current directory and loads the first config file found"""
+        path = load_default_config()
+        if path:
+            self._set_config_file(str(path))
+            return
         for path in pathlib.Path(DIRECTORY).iterdir():
             if path.name.startswith('config') and path.suffix == '.yaml':
                 self._set_config_file(str(path))
 
     def _pick_config_file(self, e: ft.FilePickerResultEvent):
         if not e.files:
-            # self._set_config_file()
             return
         path = e.files[0].path
         self._set_config_file(path)
@@ -349,7 +369,12 @@ class FletApp:
         run_row.controls.append(btn)
         pbar = ft.ProgressBar(width=400, value=0)
         run_row.controls.append(pbar)
+
+        progress_text = ft.Text('')
+        run_row.controls.append(progress_text)
+
         self._progress_bars[instrument.upper()] = pbar
+        self._progress_texts[instrument.upper()] = progress_text
         inst_col.controls.append(run_row)
 
         container = ft.Container(content=inst_col,
@@ -375,11 +400,11 @@ class FletApp:
             return
         root = pathlib.Path(self._data_root_directory.value)
         subdirs = dict((path.name.upper(), path) for path in root.iterdir())
-        for inst in self._instrument_items:
-            path = subdirs.get(inst['source_directory'].upper())
+        for name, inst in self._instrument_items.items():
+            path = subdirs.get(name.upper())
             if not path:
                 continue
-            self._instrument_items[inst]['source_directory'].value = str(path)
+            self._instrument_items[name]['source_directory'].value = str(path)
 
     def _add_attributes_container(self, parent: list, instrument: str, attributes: dict):
         padding = 10
@@ -431,14 +456,18 @@ class FletApp:
         self._progress_bars[inst.upper()].value = 0.1
         self.update_page()
         sdm = SveaDataManager.from_config(config)
+        print('Reading')
         sdm.read_packages()
+        print('Transforming')
         sdm.transform_packages()
+        print('Writing')
         sdm.write_packages()
         report_dir = self._write_report()
         self._show_result_ok(report_dir)
 
         for ins in config:
             self._progress_bars[ins.upper()].value = 0
+            self._progress_texts[ins.upper()].value = 'Allt klart!'
         self.update_page()
 
     def _disable_toggle_buttons(self):
@@ -590,19 +619,28 @@ class FletApp:
         import os
         os.system(f'start {report_dir}')
 
-    def _callback_file_storage(self, data):
+    def _callback_on_progress(self, data):
         pbar = self._progress_bars.get(data['instrument'].upper())
+        text = self._progress_texts.get(data['instrument'].upper())
         if not pbar:
             return
-        pbar.value = data['nr_files_copied'] / data['nr_files_total']
+        pbar.value = data['percentage'] / 100
+        text.value = data.get('msg', '')
         self.update_page()
 
-    def _callback_svn_prepared(self, data):
-        pbar = self._progress_bars.get(data['instrument'].upper())
-        if not pbar:
-            return
-        pbar.value = data['nr_files_copied'] / data['nr_files_total']
-        self.update_page()
+    # def _callback_file_storage(self, data):
+    #     pbar = self._progress_bars.get(data['instrument'].upper())
+    #     if not pbar:
+    #         return
+    #     pbar.value = data['nr_files_copied'] / data['nr_files_total']
+    #     self.update_page()
+    #
+    # def _callback_svn_prepared(self, data):
+    #     pbar = self._progress_bars.get(data['instrument'].upper())
+    #     if not pbar:
+    #         return
+    #     pbar.value = data['nr_files_copied'] / data['nr_files_total']
+    #     self.update_page()
 
     def _on_archiving_finished(self, data):
         self._enable_toggle_buttons()
