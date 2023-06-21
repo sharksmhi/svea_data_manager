@@ -1,9 +1,15 @@
 import datetime
+import logging
 import os
 import pathlib
-import sys
 import shutil
+import sys
 import zipfile
+from pathlib import Path
+
+
+logger = logging.getLogger(__name__)
+
 
 if getattr(sys, 'frozen', False):
     ROOT_DIR = pathlib.Path(sys.executable).parent
@@ -23,12 +29,12 @@ def create_temp_directory():
     TEMP_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 
-def clean_temp_directory():
+def clear_temp_dir(days_old=0):
     """ Deletes old files in the temp folder """
     if not TEMP_DIRECTORY.exists():
         return
     now = datetime.datetime.now()
-    dt = datetime.timedelta(days=2)
+    dt = datetime.timedelta(days=days_old)
     for path in TEMP_DIRECTORY.iterdir():
         unix_time = os.path.getctime(path)
         t = datetime.datetime.fromtimestamp(unix_time)
@@ -50,3 +56,15 @@ def create_zip_file(file_paths, output_path, rel_path):
                 relative_path = file_path.relative_to(rel_path)
                 # Add the file to the zip using the relative path
                 zipf.write(file_path, arcname=relative_path)
+
+
+def check_path(path):
+    path = Path(path)
+
+    if path.is_absolute() or '..' in path.parts:
+        msg = 'path must not be absolute or contain any traversal characters.'
+        logger.error(msg)
+        raise ValueError(msg)
+
+    return path
+

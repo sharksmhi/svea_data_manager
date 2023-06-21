@@ -2,15 +2,12 @@ import logging
 import pathlib
 import re
 import datetime
-import shutil
-import tempfile
 
 from svea_data_manager.frameworks import Instrument, Resource
 from svea_data_manager.frameworks import FileStorage
 from svea_data_manager.frameworks import exceptions
 from svea_data_manager.sdm_event import post_event
-from svea_data_manager.sdm_event import subscribe
-from svea_data_manager import utils
+from svea_data_manager import helpers
 
 from ifcb.metadata import MetadataIFCB
 from ifcb.hdr_file import HdrFile
@@ -40,9 +37,9 @@ class IFCB(Instrument):
 
         ]:
             source_directory = self.source_directory
-            if utils.get_temp_directory() in source_file.parents:
-                source_directory = utils.get_temp_directory()
-                source_file = source_file.relative_to(utils.get_temp_directory())
+            if helpers.get_temp_directory() in source_file.parents:
+                source_directory = helpers.get_temp_directory()
+                source_file = source_file.relative_to(helpers.get_temp_directory())
             resource = cls.from_source_file(source_directory, source_file)
             if resource:
                 return resource
@@ -106,10 +103,10 @@ class IFCB(Instrument):
             #     target_path.parent.mkdir(parents=True, exist_ok=True)
             #     shutil.copy2(source_path, target_path)
         for instrument, file_paths in include_file_paths.items():
-            zip_file_path = pathlib.Path(utils.get_temp_directory(),
+            zip_file_path = pathlib.Path(helpers.get_temp_directory(),
                                          f'result_{instrument}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
                 # shutil.make_archive(str(zip_file_path), 'zip', tmpdirname)
-            utils.create_zip_file(file_paths, zip_file_path, rel_path=self.config['source_directory'])
+            helpers.create_zip_file(file_paths, zip_file_path, rel_path=self.config['source_directory'])
             print(f'{zip_file_path=}')
             self.add_file(zip_file_path)
 

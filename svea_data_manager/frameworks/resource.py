@@ -3,8 +3,7 @@ import logging
 import datetime
 
 from svea_data_manager.frameworks import exceptions
-from svea_data_manager.frameworks.helpers import check_path, get_temp_dir_path
-
+from svea_data_manager import helpers
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +13,7 @@ class Resource:
     def __init__(self, source_directory, path, attributes={}):
         self._source_directory = Path(source_directory)
 
-        path = check_path(path)
+        path = helpers.check_path(path)
         self._source_path = path
         self._target_path = path
 
@@ -51,7 +50,7 @@ class Resource:
 
     @target_path.setter
     def target_path(self, path):
-        self._target_path = check_path(path)
+        self._target_path = helpers.check_path(path)
 
     @property
     def date(self):
@@ -78,9 +77,9 @@ class Resource:
     def from_string_content(cls, string, file_name=None, attributes={}):
         import uuid
         if file_name:
-            temp_path = Path(get_temp_dir_path(), file_name)
+            temp_path = Path(helpers.get_temp_directory(), file_name)
         else:
-            temp_path = Path(get_temp_dir_path(), str(uuid.uuid4()))
+            temp_path = Path(helpers.get_temp_directory(), str(uuid.uuid4()))
         with open(temp_path, 'w') as fid:
             fid.write(string)
         return cls(temp_path.parent, temp_path.name, attributes=attributes)
