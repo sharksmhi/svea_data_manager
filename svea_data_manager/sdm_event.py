@@ -3,6 +3,7 @@ _sdm_subscribers = dict(
     on_resource_rejected={},
     on_stop_write={},
     on_target_path_exists={},
+    on_target_path_not_given={},
     on_progress={},
     on_file_copied={},
     on_svn_storage_prepared={},
