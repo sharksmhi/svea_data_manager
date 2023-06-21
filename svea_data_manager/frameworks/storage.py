@@ -66,6 +66,11 @@ class FileStorage(Storage):
             instrument = package.instrument
             key = str(package)
             absolute_source_path = resource.absolute_source_path
+            if resource.target_path is None:
+                msg = f'Will not write file. No target path given for file: {resource.absolute_source_path}'
+                logger.info(msg)
+                post_event('on_target_path_not_given', dict(instrument=instrument, path=resource.absolute_source_path))
+                continue
             absolute_target_path = self._resolve_path(resource.target_path)
 
             if not force and absolute_target_path.exists():
@@ -153,6 +158,11 @@ class SubversionStorage(Storage):
         for nr, resource in enumerate(package.resources):
             instrument = package.instrument
             absolute_source_path = resource.absolute_source_path
+            if resource.target_path is None:
+                msg = f'Will not write file. No target path given for file: {resource.absolute_source_path}'
+                logger.info(msg)
+                post_event('on_target_path_not_given', dict(instrument=instrument, path=resource.absolute_source_path))
+                continue
             relative_target_path = pathlib.PurePosixPath(resource.target_path)
 
             post_event('on_progress',

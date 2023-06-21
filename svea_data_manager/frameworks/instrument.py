@@ -45,30 +45,56 @@ class Instrument:
                                            msg='Reading files...',
                                            percentage=int((nr+1)/tot_nr_files*100)
                                            ))
-            resource = self.prepare_resource(source_file)
-            if not isinstance(resource, Resource):
-                logger.warning(
-                    "Don't know how to handle source file: %s. "
-                    "Skipping file." % source_file
-                )
-                post_event('on_resource_rejected', dict(instrument=self.name, path=Path(self.source_directory, source_file)))
-                continue
-
-            package_key = self.get_package_key_for_resource(resource)
-
-            try:
-                package = self.packages.get(package_key)
-            except PackageCollection.NotInCollection:
-                package = self.prepare_package(package_key)
-                self.packages.add(package)
-                logger.info(f'New package for added to PackageCollection: {package}')
-
-            package.resources.add(resource)
-            post_event('on_resource_added', dict(instrument=self.name, resource=resource, path=resource.absolute_source_path))
+            self.add_file(source_file)
+            # resource = self.prepare_resource(source_file)
+            # if not isinstance(resource, Resource):
+            #     logger.warning(
+            #         "Don't know how to handle source file: %s. "
+            #         "Skipping file." % source_file
+            #     )
+            #     post_event('on_resource_rejected', dict(instrument=self.name, path=Path(self.source_directory, source_file)))
+            #     continue
+            #
+            # package_key = self.get_package_key_for_resource(resource)
+            #
+            # try:
+            #     package = self.packages.get(package_key)
+            # except PackageCollection.NotInCollection:
+            #     package = self.prepare_package(package_key)
+            #     self.packages.add(package)
+            #     logger.info(f'New package for added to PackageCollection: {package}')
+            #
+            # package.resources.add(resource)
+            # post_event('on_resource_added', dict(instrument=self.name, resource=resource, path=resource.absolute_source_path))
         post_event('on_progress', dict(instrument=self.name,
                                        msg='Done reading files',
                                        percentage=100
                                        ))
+
+    def add_file(self, source_file):
+        """Adds the source_file to the correct package"""
+        resource = self.prepare_resource(source_file)
+        if not isinstance(resource, Resource):
+            logger.warning(
+                "Don't know how to handle source file: %s. "
+                "Skipping file." % source_file
+            )
+            post_event('on_resource_rejected',
+                       dict(instrument=self.name, path=Path(self.source_directory, source_file)))
+            return
+
+        package_key = self.get_package_key_for_resource(resource)
+
+        try:
+            package = self.packages.get(package_key)
+        except PackageCollection.NotInCollection:
+            package = self.prepare_package(package_key)
+            self.packages.add(package)
+            logger.info(f'New package for added to PackageCollection: {package}')
+
+        package.resources.add(resource)
+        post_event('on_resource_added',
+                   dict(instrument=self.name, resource=resource, path=resource.absolute_source_path))
 
     def transform_packages(self, **kwargs):
         for package in self.packages:
@@ -100,7 +126,7 @@ class Instrument:
         raise NotImplementedError(msg)
 
     @property
-    def packages(self):
+    def packages(self) -> PackageCollection:
         if not isinstance(self._packages, PackageCollection):
             msg = f'Packages has not yet been extracted for {self.__class__.__name__}. ' \
                   f'Make sure to call the read_packages method before trying to access packages.'

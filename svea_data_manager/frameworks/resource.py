@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class Resource:
 
-    def __init__(self, source_directory, path, attributes = {}):
+    def __init__(self, source_directory, path, attributes={}):
         self._source_directory = Path(source_directory)
 
         path = check_path(path)
