@@ -2,11 +2,15 @@ import logging
 import pathlib
 import re
 import datetime
+import shutil
+import tempfile
 
 from svea_data_manager.frameworks import Instrument, Resource
 from svea_data_manager.frameworks import FileStorage
 from svea_data_manager.frameworks import exceptions
 from svea_data_manager.sdm_event import post_event
+from svea_data_manager.sdm_event import subscribe
+from svea_data_manager import utils
 
 from ifcb.metadata import MetadataIFCB
 from ifcb.hdr_file import HdrFile
@@ -27,14 +31,33 @@ class IFCB(Instrument):
             raise exceptions.ImproperlyConfiguredInstrument(msg)
         self._storage = FileStorage(self._config['target_directory'])
 
-    def prepare_resource(self, source_file):
-        resource = IFCBResourceRaw.from_source_file(self.source_directory, source_file)
-        if not resource:
-            resource = IFCBResourceProcessed.from_source_file(self.source_directory, source_file)
-        return resource
+    def prepare_resource(self, source_file: pathlib.Path):
+        for cls in [
+            IFCBResourceResult,
+            IFCBResourceRaw,
+            IFCBResourceProcessed,
+            # IFCBResourceClassification,
+
+        ]:
+            source_directory = self.source_directory
+            if utils.get_temp_directory() in source_file.parents:
+                source_directory = utils.get_temp_directory()
+                source_file = source_file.relative_to(utils.get_temp_directory())
+            resource = cls.from_source_file(source_directory, source_file)
+            if resource:
+                return resource
+
+        # resource = IFCBResourceRaw.from_source_file(self.source_directory, source_file)
+        # if not resource:
+        #     resource = IFCBResourceProcessed.from_source_file(self.source_directory, source_file)
+        # return resource
 
     def get_package_key_for_resource(self, resource):
         return resource.package_key
+
+    def transform_packages(self):
+        super().transform_packages()
+        self._create_zip_result_package()
 
     def transform_package(self, package, **kwargs):
         # Look for hdr and metadata file
@@ -67,6 +90,28 @@ class IFCB(Instrument):
     def write_package(self, package):
         logger.info('Writing package %s to file storage' % package)
         return self._storage.write(package, self.config.get('force', False))
+
+    def _create_zip_result_package(self):
+        include_file_paths = {}
+        for pack in self.packages:
+            for resource in pack.resources:
+                if isinstance(resource, IFCBResourceRaw):
+                    continue
+                instrument_name = resource.attributes['instrument']
+                include_file_paths.setdefault(instrument_name, [])
+                include_file_paths[instrument_name].append(resource.absolute_source_path)
+        # with tempfile.TemporaryDirectory() as tmpdirname:
+            # for source_path, rel_path in include_files:
+            #     target_path = pathlib.Path(tmpdirname, rel_path)
+            #     target_path.parent.mkdir(parents=True, exist_ok=True)
+            #     shutil.copy2(source_path, target_path)
+        for instrument, file_paths in include_file_paths.items():
+            zip_file_path = pathlib.Path(utils.get_temp_directory(),
+                                         f'result_{instrument}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
+                # shutil.make_archive(str(zip_file_path), 'zip', tmpdirname)
+            utils.create_zip_file(file_paths, zip_file_path, rel_path=self.config['source_directory'])
+            print(f'{zip_file_path=}')
+            self.add_file(zip_file_path)
 
 
 class IFCBResource(Resource):
@@ -217,6 +262,36 @@ class IFCBResourceClassification(IFCBResource):
             if name_match:
                 attributes = name_match.groupdict()
                 return IFCBResourceClassification(root_directory, source_file, attributes)
+
+
+class IFCBResourceResult(IFCBResource):
+
+    PATTERNS = [
+        re.compile('^result_{}_{}{}{}_{}{}{}.zip$'.format('(?P<instrument>IFCB\d*)',
+                                                         '(?P<year>\d{4})',
+                                                         '(?P<month>\d{2})',
+                                                         '(?P<day>\d{2})',
+                                                         '(?P<hour>\d{2})',
+                                                         '(?P<minute>\d{2})',
+                                                         '(?P<second>\d{2})',
+                                                         )
+                   ),
+
+    ]
+
+    @property
+    def target_path(self):
+        return pathlib.Path(self.attributes['instrument'], f'results', self.source_path.name)
+
+    @staticmethod
+    def from_source_file(root_directory, source_file):
+        for PATTERN in IFCBResourceResult.PATTERNS:
+            name_match = PATTERN.search(source_file.name)
+            if name_match:
+                attributes = name_match.groupdict()
+                print(f'{root_directory=}')
+                print(f'{source_file=}')
+                return IFCBResourceResult(root_directory, source_file, attributes)
 
 
 
