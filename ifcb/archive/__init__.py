@@ -37,6 +37,5 @@ def pull_result_from_archive(archive_directory: pathlib.Path | str = None,
     result_directory = archive.unpack_result_to_directory(key=key, directory=target_directory)
     raw = data_raw.DataRaw(archive_directory)
     data_directory = result_directory / 'data'
-    print(f'{raw_file_keys=}')
     raw.copy_keys_to_data_directory(keys=raw_file_keys, directory=data_directory)
     return result_directory

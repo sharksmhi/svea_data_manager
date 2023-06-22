@@ -251,8 +251,10 @@ class FletApp:
             )
             self._show_info(f'Arkivet "{self.archive} finns nu under mappen "{self.target_directory}"',
                             status='good')
-        except Exception:
-            pass
+        except FileExistsError as e:
+            self._show_info(f'Filen/mappen finns redan: \n{e}')
+        except Exception as e:
+            self._show_info(f'Något gick fel: \n{e}')
         finally:
             self._enable_toggle_buttons()
 
