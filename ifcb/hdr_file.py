@@ -45,7 +45,7 @@ class HdrFile:
             reader = csv.reader(fid, delimiter=':')
             data = {row[0]: row[1] for row in reader}
         self._lat = data.get('gpsLatitude')
-        self._lon = data.get('gpsLatitude')
+        self._lon = data.get('gpsLongitude')
         if self._lat == 'N/A':
             self._lat = ''
         if self._lon == 'N/A':
