@@ -57,7 +57,7 @@ class IFCB(Instrument):
 
     def transform_packages(self):
         super().transform_packages()
-        self._create_zip_result_package()
+        self._create_result_package()
 
     def transform_package(self, package, **kwargs):
         # Look for hdr and metadata file
@@ -91,29 +91,40 @@ class IFCB(Instrument):
         logger.info('Writing package %s to file storage' % package)
         return self._storage.write(package, self.config.get('force', False))
 
-    def _create_zip_result_package(self):
+    @staticmethod
+    def _get_result_file_stem(instrument):
+        return f'result_{instrument}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}'
+
+    def _create_result_package(self):
+        raw_file_stems = {}
         include_file_paths = {}
         instrument_name = None
         for pack in self.packages:
             for resource in pack.resources:
                 if isinstance(resource, IFCBResourceRaw):
+                    raw_file_stems.setdefault(instrument_name, set())
+                    raw_file_stems[instrument_name].add(resource.absolute_source_path.stem)
                     continue
                 if not instrument_name:
                     instrument_name = resource.attributes.get('instrument')
                 include_file_paths.setdefault(instrument_name, [])
                 include_file_paths[instrument_name].append(resource.absolute_source_path)
-        # with tempfile.TemporaryDirectory() as tmpdirname:
-            # for source_path, rel_path in include_files:
-            #     target_path = pathlib.Path(tmpdirname, rel_path)
-            #     target_path.parent.mkdir(parents=True, exist_ok=True)
-            #     shutil.copy2(source_path, target_path)
+
         for instrument, file_paths in include_file_paths.items():
-            zip_file_path = pathlib.Path(helpers.get_temp_directory(),
-                                         f'result_{instrument}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
-                # shutil.make_archive(str(zip_file_path), 'zip', tmpdirname)
+            file_stem = self._get_result_file_stem(instrument)
+            zip_file_path = pathlib.Path(helpers.get_temp_directory(), f'{file_stem}.zip')
+            txt_file_path = pathlib.Path(helpers.get_temp_directory(), f'{file_stem}.txt')
             helpers.create_zip_file(file_paths, zip_file_path, rel_path=self.config['source_directory'])
+            self._create_result_txt_file(sorted(raw_file_stems[instrument]), txt_file_path)
             print(f'{zip_file_path=}')
-            self.add_file(zip_file_path)
+            reso = self.add_file(zip_file_path)
+            post_event('on_transform_add_file', dict(instrument=self.name, resource=reso, name=zip_file_path))
+
+    def _create_result_txt_file(self, file_paths, txt_result_file_path):
+        with open(txt_result_file_path, 'w') as fid:
+            fid.write('\n'.join([str(path) for path in file_paths]))
+        reso = self.add_file(txt_result_file_path)
+        post_event('on_transform_add_file', dict(instrument=self.name, resource=reso, name=txt_result_file_path))
 
 
 class IFCBResource(Resource):
@@ -356,13 +367,14 @@ class IFCBResourceConfig(IFCBResource):
 class IFCBResourceResult(IFCBResource):
 
     PATTERNS = [
-        re.compile('^result_{}_{}{}{}_{}{}{}.zip$'.format('(?P<instrument>IFCB\d*)',
+        re.compile('^result_{}_{}{}{}_{}{}{}{}$'.format('(?P<instrument>IFCB\d*)',
                                                          '(?P<year>\d{4})',
                                                          '(?P<month>\d{2})',
                                                          '(?P<day>\d{2})',
                                                          '(?P<hour>\d{2})',
                                                          '(?P<minute>\d{2})',
                                                          '(?P<second>\d{2})',
+                                                         '(?P<suffix>\.zip|\.txt)',
                                                          )
                    ),
 

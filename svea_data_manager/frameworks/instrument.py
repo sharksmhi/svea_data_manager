@@ -95,6 +95,7 @@ class Instrument:
         package.resources.add(resource)
         post_event('on_resource_added',
                    dict(instrument=self.name, resource=resource, path=resource.absolute_source_path))
+        return resource
 
     def transform_packages(self, **kwargs):
         for package in self.packages:
