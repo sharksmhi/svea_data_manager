@@ -1,3 +1,7 @@
+mw_*
+store_*
+temp_*
+
 .idea/
 log/
 *.plantuml
