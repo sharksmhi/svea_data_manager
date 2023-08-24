@@ -109,6 +109,10 @@ class Instrument:
     def get_package_key_for_resource(self, resource):
         return resource.source_path.stem
 
+    def _add_config_attributes_to_resource(self, resource):
+        for key, value in self.config.get('attributes', {}).items():
+            resource.attributes[key] = value
+
     def prepare_resource(self, source_file):
         return Resource(self.source_directory, source_file)
 

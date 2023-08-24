@@ -155,9 +155,14 @@ class SubversionStorage(Storage):
 
         # first iteration: extract files to add and check for existence.
         nr_files = len(package.resources)
+        messages = set()
         for nr, resource in enumerate(package.resources):
             instrument = package.instrument
             absolute_source_path = resource.absolute_source_path
+            print(f'{resource.attributes=}')
+            svn_message = resource.attributes.get('svn_commit_message')
+            if svn_message:
+                messages.add(svn_message)
             if resource.target_path is None:
                 msg = f'Will not write file. No target path given for file: {resource.absolute_source_path}'
                 logger.info(msg)
@@ -226,12 +231,15 @@ class SubversionStorage(Storage):
                         ))
 
         # run multi-command: commit
-        commit_message = 'Add files for package: %s' % package
+        commit_message = f'Add {nr_files} files for package {package}'
+        if messages:
+            add = '; '.join(messages)
+            commit_message = f'{commit_message}: {add}'
         self._run_svn_multi_command(*multi_command, commit_message=commit_message)
 
         post_event('on_progress',
                    dict(instrument=package.instrument,
-                        msg='Commit to SVN finished',
+                        msg=f'Commit to SVN finished with comment: {commit_message}',
                         percentage=100,
                         ))
 
