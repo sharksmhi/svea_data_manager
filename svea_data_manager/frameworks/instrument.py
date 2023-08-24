@@ -74,6 +74,7 @@ class Instrument:
     def add_file(self, source_file):
         """Adds the source_file to the correct package"""
         resource = self.prepare_resource(source_file)
+
         if not isinstance(resource, Resource):
             logger.warning(
                 "Don't know how to handle source file: %s. "
@@ -82,6 +83,8 @@ class Instrument:
             post_event('on_resource_rejected',
                        dict(instrument=self.name, path=Path(self.source_directory, source_file)))
             return
+
+        self._add_config_attributes_to_resource(resource)
 
         package_key = self.get_package_key_for_resource(resource)
 
@@ -110,7 +113,12 @@ class Instrument:
         return resource.source_path.stem
 
     def _add_config_attributes_to_resource(self, resource):
+        """Adds config attributes given to the instrument class to the given resource. If value is given in the
+        config attributes this value will replace any old value in the resource attributes. If value is missing the
+        old resource attribute value will be kept """
         for key, value in self.config.get('attributes', {}).items():
+            if not value:
+                continue
             resource.attributes[key] = value
 
     def prepare_resource(self, source_file):

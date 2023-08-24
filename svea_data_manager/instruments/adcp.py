@@ -74,8 +74,8 @@ class ADCP(Instrument):
         #     resource.attributes['instrument'] = 'ADCP' + resource.attributes['instrument']
         if not resource:
             return
-        self._set_ship(resource)
-        self._set_cruise(resource)
+        # self._set_ship(resource)
+        # self._set_cruise(resource)
         return resource
 
     def _set_ship(self, resource):

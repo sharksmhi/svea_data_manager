@@ -28,9 +28,7 @@ class CTD(Instrument):
         # self._storage = FileStorage(self._config['target_directory'])
 
     def prepare_resource(self, source_file):
-        resource = CTDResource.from_source_file(self.source_directory, source_file)
-        self._add_config_attributes_to_resource(resource)
-        return resource
+        return CTDResource.from_source_file(self.source_directory, source_file)
 
     def get_package_key_for_resource(self, resource):
         return resource.package_key
