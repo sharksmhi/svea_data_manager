@@ -15,6 +15,7 @@ from svea_data_manager import SveaDataManager
 from svea_data_manager.sdm_logger import SDMLogger
 from svea_data_manager import sdm_event
 from svea_data_manager.sdm_event import subscribe
+from svea_data_manager.gui.tooltip_texts import TooltipTexts, get_tooltip_widget
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,8 @@ ATTRIBUTES_COLOR = '#F7EDDB'
 
 MISSING_CONFIG_TEXT = '< Ingen konfigurationsfil vald >'
 MISSING_DATA_ROOT_TEXT = '< Ingen rotkatalog för källdata vald >'
+
+TOOLTIP_TEXT = TooltipTexts()
 
 # INSTRUMENT_BG_COLORS = {
 #     'ifcb': '#75ff75',
@@ -76,7 +79,8 @@ TRANSLATE = {
     'target_directory': 'Målmapp',
     'ship': 'Fartyg',
     'cruise': 'Cruise',
-    'comment': 'Kommentar'
+    'comment': 'Kommentar',
+    'svn_commit_message': 'SVN commit-kommentar'
 }
 
 
@@ -250,7 +254,6 @@ class FletApp:
         return path
 
     def _build_select_config(self):
-
         file_picker = ft.FilePicker(on_result=self._pick_config_file)
         self.page.overlay.append(file_picker)
         btn = ft.ElevatedButton("Välj konfigurationsfil", on_click=lambda _: file_picker.pick_files(
@@ -258,16 +261,31 @@ class FletApp:
 
         self._config_path = ft.Text(MISSING_CONFIG_TEXT)
 
-        self._config_row.controls.append(btn)
-        self._config_row.controls.append(self._config_path)
+        row = ft.Row()
+        row.controls.append(btn)
+        row.controls.append(self._config_path)
+
+        tt = get_tooltip_widget(TOOLTIP_TEXT.config_file)
+        tt.content = row
+
+        self._config_row.controls.append(tt)
 
     def _build_select_root_source(self):
         btn = ft.ElevatedButton("Välj rotkatalog för data", on_click=self._pick_source_root_dir)
 
         self._data_root_directory = ft.Text(MISSING_DATA_ROOT_TEXT)
 
-        self._root_source_row.controls.append(btn)
-        self._root_source_row.controls.append(self._data_root_directory)
+        row = ft.Row()
+        row.controls.append(btn)
+        row.controls.append(self._data_root_directory)
+
+        tt = get_tooltip_widget(TOOLTIP_TEXT.root_directory)
+        tt.content = row
+
+        self._root_source_row.controls.append(tt)
+
+        # self._root_source_row.controls.append(btn)
+        # self._root_source_row.controls.append(self._data_root_directory)
 
     def _set_config_file(self, text=None):
         if not text:
@@ -343,12 +361,14 @@ class FletApp:
                 value = ''
             row = ft.Row()
             if key == 'source_directory':
+                tt = get_tooltip_widget(TOOLTIP_TEXT.source_directory(instrument.upper()))
                 btn = ft.ElevatedButton(
                     translate(key),
                     # icon=ft.icons.UPLOAD_FILE,
                     on_click=lambda e, inst=instrument: self._pick_source_dir(inst))
                 self._toggle_buttons.append(btn)
-                row.controls.append(btn)
+                tt.content = btn
+                row.controls.append(tt)
                 self._instrument_items[instrument][key] = ft.Text(value or '')
                 row.controls.append(self._instrument_items[instrument][key])
             elif type(value) == bool:
@@ -362,6 +382,7 @@ class FletApp:
         attributes = config.get('attributes')
         if attributes:
             self._add_attributes_container(parent=inst_col.controls, instrument=instrument, attributes=attributes)
+        tt = get_tooltip_widget(TOOLTIP_TEXT.archive_instrument(instrument))
         run_row = ft.Row()
         btn = ft.ElevatedButton(text=f'Arkivera {instrument}-data',
                                                   on_click=lambda e, inst=instrument: self._archive_data(inst))
@@ -375,7 +396,9 @@ class FletApp:
 
         self._progress_bars[instrument.upper()] = pbar
         self._progress_texts[instrument.upper()] = progress_text
-        inst_col.controls.append(run_row)
+
+        tt.content = run_row
+        inst_col.controls.append(tt)
 
         container = ft.Container(content=inst_col,
                                  bgcolor=get_instrument_bg_color(instrument),
@@ -411,19 +434,31 @@ class FletApp:
         self._attributes.setdefault(instrument, {})
         attr_col = ft.Column()
         for key, value in attributes.items():
+            print(f'{key=} : {value=}')
             if not value:
                 value = ''
             attr = ft.TextField(label=translate(key))
             attr.value = str(value)
             if key.lower() in DISABLED_ATTRIBUTES:
                 attr.disabled = True
-            attr_col.controls.append(attr)
+
+            msg = TOOLTIP_TEXT.default_attribute
+            if key == 'ship':
+                msg = TOOLTIP_TEXT.ship
+            elif key == 'cruise':
+                msg = TOOLTIP_TEXT.cruise
+            tt = get_tooltip_widget(msg)
+
+            tt.content = attr
+            attr_col.controls.append(tt)
+
             self._attributes[instrument][key] = attr
 
         container = ft.Container(content=attr_col,
                                  bgcolor=ATTRIBUTES_COLOR,
                                  padding=padding,
                                  border_radius=10)
+
         parent.append(container)
 
     def _update_config_items(self):
@@ -451,7 +486,7 @@ class FletApp:
         config = {inst: config[inst] for inst in config if config[inst]['source_directory']}
         logger.info(f'Running instruments: {",".join(list(config))}')
         if not config:
-            self._show_info('Du har inte angivig källmapp för något instrument!')
+            self._show_info('Du har inte angivit källmapp för något instrument!')
             return
         self._progress_bars[inst.upper()].value = 0.1
         self.update_page()
