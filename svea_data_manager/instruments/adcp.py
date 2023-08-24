@@ -166,7 +166,8 @@ class ADCPResource(Resource):
 
     @property
     def package_key(self):
-        return f"{self.attributes['instrument']}_{self.attributes['ship']}_{self.attributes['year']}_{self.attributes['cruise']}"
+        return f"{self.attributes['instrument']}_{self.attributes['ship']}_{self.attributes['year']}" \
+               f"_{self.attributes['cruise'].zfill(2)}"
 
 
 class ADCPResourceRaw(ADCPResource):
