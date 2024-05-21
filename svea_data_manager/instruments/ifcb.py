@@ -101,15 +101,14 @@ class IFCB(Instrument):
         instrument_name = None
         for pack in self.packages:
             for resource in pack.resources:
-                if isinstance(resource, IFCBResourceRaw):
+                if not instrument_name:
+                    instrument_name = resource.attributes.get('instrument')
+                if isinstance(resource, (IFCBResourceRaw, IFCBResourceProcessed)):
                     raw_file_stems.setdefault(instrument_name, set())
                     raw_file_stems[instrument_name].add(resource.absolute_source_path.stem)
                     continue
-                if not instrument_name:
-                    instrument_name = resource.attributes.get('instrument')
                 include_file_paths.setdefault(instrument_name, [])
                 include_file_paths[instrument_name].append(resource.absolute_source_path)
-
         for instrument, file_paths in include_file_paths.items():
             file_stem = self._get_result_file_stem(instrument)
             zip_file_path = pathlib.Path(helpers.get_temp_directory(), f'{file_stem}.zip')
@@ -230,14 +229,13 @@ class IFCBResourceProcessed(IFCBResource):
 
     @property
     def target_path(self):
-        return
-        # process_type = self.attributes["process_type"]
-        # if process_type == 'fea':
-        #     process_type = 'features'
-        # subdir = f"D{self.attributes['year']}{self.attributes['month']}{self.attributes['day']}"
-        # file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
-        # return pathlib.Path(self.attributes['instrument'], f'{process_type}',
-        #                     f"D{self.attributes['year']}", subdir, file_name)
+        process_type = self.attributes["process_type"]
+        if process_type == 'fea':
+            process_type = 'features'
+        subdir = f"D{self.attributes['year']}{self.attributes['month']}{self.attributes['day']}"
+        file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
+        return pathlib.Path(self.attributes['instrument'], f'{process_type}',
+                            f"D{self.attributes['year']}", subdir, file_name)
 
     @staticmethod
     def from_source_file(root_directory, source_file):
