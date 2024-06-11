@@ -1,0 +1,26 @@
+[project]
+name = "svea_data_manager"
+version = "1.0.0"
+description = "Python package to archive data from RV Svea"
+authors = [
+    {name = "", email = "nodc@smhi.se"},
+]
+dependencies = [
+    "pyyaml>=6.0.1",
+    "scipy>=1.13.0",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
+[project.optional-dependencies]
+gui = [
+    "flet>=0.22.1",
+]
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true
