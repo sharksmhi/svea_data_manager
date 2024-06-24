@@ -5,8 +5,8 @@ import os
 import logging
 import datetime
 
-from ifcb.hdr_file import HdrFile
-from ifcb.mat_file import ClassifierMatFile
+from svea_data_manager.ifcb.hdr_file import HdrFile
+from svea_data_manager.ifcb.mat_file import ClassifierMatFile
 logger = logging.getLogger(__name__)
 
 # VOLUME_PAR = 'ml_analyzedTB'

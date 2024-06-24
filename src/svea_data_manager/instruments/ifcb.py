@@ -9,8 +9,8 @@ from svea_data_manager.frameworks import exceptions
 from svea_data_manager.sdm_event import post_event
 from svea_data_manager import helpers
 
-from ifcb.metadata import MetadataIFCB
-from ifcb.hdr_file import HdrFile
+from svea_data_manager.ifcb.metadata import MetadataIFCB
+from svea_data_manager.ifcb.hdr_file import HdrFile
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +33,10 @@ class IFCB(Instrument):
             IFCBResourceResult,
             IFCBResourceRaw,
             IFCBResourceProcessed,
-            IFCBResourceClassification,
-            IFCBResourceManual,
-            IFCBResourceConfig,
-            IFCBResourceSummary,
+            # IFCBResourceClassification,
+            # IFCBResourceManual,
+            # IFCBResourceConfig,
+            # IFCBResourceSummary,
 
         ]:
             source_directory = self.source_directory
@@ -232,6 +232,8 @@ class IFCBResourceProcessed(IFCBResource):
         process_type = self.attributes["process_type"]
         if process_type == 'fea':
             process_type = 'features'
+        elif process_type == 'multiblob':
+            process_type = 'features/multiblob'
         subdir = f"D{self.attributes['year']}{self.attributes['month']}{self.attributes['day']}"
         file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
         return pathlib.Path(self.attributes['instrument'], f'{process_type}',
@@ -380,7 +382,8 @@ class IFCBResourceResult(IFCBResource):
 
     @property
     def target_path(self):
-        return pathlib.Path(self.attributes['instrument'], f'results', self.source_path.name)
+        return
+        # return pathlib.Path(self.attributes['instrument'], f'results', self.source_path.name)
 
     @staticmethod
     def from_source_file(root_directory, source_file):
