@@ -30,6 +30,10 @@ class IFCBclassification(Instrument):
         super().__init__(config)
 
         self._source_root_directory: pathlib.Path | None = None
+        # This is the root directory (some parent directory) we use to find associated files used in the classification.
+        # If this directory is not given in config the program will try to find this directory in the parents of the
+        # source_directory.
+
         self._source_root_sub_directories: dict[str, pathlib.Path] = {}
 
         self._sub_directories_paths: dict = {}
@@ -37,7 +41,7 @@ class IFCBclassification(Instrument):
 
         self._set_source_root_directory()
         self._set_sub_directories()
-        self._find_sub_directories_paths()
+        # self._find_sub_directories_paths()
 
         if 'target_directory' not in self._config:
             msg = 'Missing required configuration target_directory.'
@@ -119,19 +123,19 @@ class IFCBclassification(Instrument):
 
     def read_packages(self):
         super().read_packages()
-        for pack in self.packages:
-            for resource in pack.resources:
-                self._paths_by_classifier.setdefault(resource.package_key, {})
-                for sub in SUB_DIRECTORIES:
-                    self._paths_by_classifier[resource.package_key].setdefault(sub, {})
-                    # print(f'{sub}: {get_key_from_path(resource.absolute_source_path)=}')
-                    key = get_key_from_path(resource.absolute_source_path)
-                    path = self._sub_directories_paths[sub].get(key)
-                    if not path:
-                        # post_event('log', f'No matching {sub}-file matching {resource.stem}')
-                        # print(f'{sub}   {resource.stem=}')
-                        continue
-                    self._paths_by_classifier[resource.package_key][sub][key] = path
+        # for pack in self.packages:
+        #     for resource in pack.resources:
+        #         self._paths_by_classifier.setdefault(resource.package_key, {})
+        #         for sub in SUB_DIRECTORIES:
+        #             self._paths_by_classifier[resource.package_key].setdefault(sub, {})
+        #             # print(f'{sub}: {get_key_from_path(resource.absolute_source_path)=}')
+        #             key = get_key_from_path(resource.absolute_source_path)
+        #             path = self._sub_directories_paths[sub].get(key)
+        #             if not path:
+        #                 # post_event('log', f'No matching {sub}-file matching {resource.stem}')
+        #                 # print(f'{sub}   {resource.stem=}')
+        #                 continue
+        #             self._paths_by_classifier[resource.package_key][sub][key] = path
 
     # def transform_package(self, package, **kwargs):
     #     clas = set()
@@ -141,9 +145,12 @@ class IFCBclassification(Instrument):
 
     def write_packages(self):
         for pack in self.packages:
+            instrument = None
             for resource in pack.resources:
                 instrument = resource.attributes['instrument']
                 break
+            if not instrument:
+                raise exceptions.NoInstrumentInformation
             target_directory = pathlib.Path(self._config['target_directory']) / instrument / 'results' / pack.package_key
             if target_directory.exists():
                 post_event('log', f'Target path exists: {target_directory}. Will not save!')
@@ -158,17 +165,17 @@ class IFCBclassification(Instrument):
                 shutil.copy2(resource.absolute_source_path, target_path)
 
             # subdirs
-            for sub in SUB_DIRECTORIES:
-                target_sub_directory = target_directory / sub
-                target_sub_directory.mkdir()
-                if sub == 'manual':
-                    for source_path in self._sub_directories_paths[sub].values():
-                        target_path = target_sub_directory / source_path.name
-                        shutil.copy2(source_path, target_path)
-                else:
-                    for source_path in self._paths_by_classifier[pack.package_key][sub].values():
-                        target_path = target_sub_directory / source_path.name
-                        shutil.copy2(source_path, target_path)
+            # for sub in SUB_DIRECTORIES:
+            #     target_sub_directory = target_directory / sub
+            #     target_sub_directory.mkdir()
+            #     if sub == 'manual':
+            #         for source_path in self._sub_directories_paths[sub].values():
+            #             target_path = target_sub_directory / source_path.name
+            #             shutil.copy2(source_path, target_path)
+            #     else:
+            #         for source_path in self._paths_by_classifier[pack.package_key][sub].values():
+            #             target_path = target_sub_directory / source_path.name
+            #             shutil.copy2(source_path, target_path)
 
 
 class IFCBResourceClassification(Resource):
@@ -192,7 +199,13 @@ class IFCBResourceClassification(Resource):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.mat_file_obj = mat_file.ClassifierMatFile(self.absolute_source_path)
+        self._mat_file_obj: mat_file.ClassifierMatFile | None = None
+
+    @property
+    def mat_file_obj(self) -> mat_file.ClassifierMatFile:
+        if not self._mat_file_obj:
+            self._mat_file_obj = mat_file.ClassifierMatFile(self.absolute_source_path)
+        return self._mat_file_obj
 
     @property
     def date_str(self):
