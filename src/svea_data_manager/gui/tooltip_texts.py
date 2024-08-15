@@ -36,6 +36,8 @@ class TooltipTexts:
 
 
 def get_tooltip_widget(msg):
+    if not msg:
+        return ft.Container()
     return ft.Tooltip(
         message=msg,
         padding=20,

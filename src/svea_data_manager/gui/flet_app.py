@@ -1,21 +1,22 @@
-import datetime
 import logging
 import logging.handlers
 import os
 import pathlib
-import shutil
-import sys
-import traceback
+import platform
 import subprocess
+import sys
+import time
+import traceback
 
 import flet as ft
 import yaml
 
 from svea_data_manager import SveaDataManager
-from svea_data_manager.sdm_logger import SDMLogger
 from svea_data_manager import sdm_event
-from svea_data_manager.sdm_event import subscribe
 from svea_data_manager.gui.tooltip_texts import TooltipTexts, get_tooltip_widget
+from svea_data_manager.sdm_event import subscribe
+from svea_data_manager.sdm_logger import SDMLogger
+from svea_data_manager.gui.user_settings import UserSettings
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,16 @@ if getattr(sys, 'frozen', False):
 else:
     DIRECTORY = pathlib.Path(__file__).parent
 
-DEFAULT_CONFIG_SAVE_PATH = pathlib.Path(DIRECTORY, 'default_config')
+
+DEFAULT_DIRECTORY = pathlib.Path.home() / 'svea_data_manager'
+DEFAULT_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
+REPORT_EXPORT_DIRECTORY = pathlib.Path(DEFAULT_DIRECTORY, 'reports')
+REPORT_EXPORT_DIRECTORY.mkdir(exist_ok=True)
+
+USER_SETTINGS_PATH = pathlib.Path(DEFAULT_DIRECTORY, 'user_settings.yaml')
+
+DEFAULT_CONFIG_SAVE_PATH = pathlib.Path(DEFAULT_DIRECTORY, 'default_config')
 
 # https://colorpalettes.net/color-palette-4553/
 INSTRUMENT_SECTION_BG_COLOR = '#DFE8CC'
@@ -32,10 +42,19 @@ CONFIG_BG_COLOR = '#DAE2B6'
 DEFAULT_INSTRUMENT_BG_COLOR = '#CCD6A6'
 ATTRIBUTES_COLOR = '#F7EDDB'
 
+SOURCE_BUTTON_COLOR = 'yellow'
+ARCHIVE_BUTTON_COLOR = 'green'
+
 MISSING_CONFIG_TEXT = '< Ingen konfigurationsfil vald >'
 MISSING_DATA_ROOT_TEXT = '< Ingen rotkatalog för källdata vald >'
 
 TOOLTIP_TEXT = TooltipTexts()
+
+REPORT_NAME_MAPPING = {
+    'rejected': 'Filer som INTE har hanterats',
+    'svn': 'Filer som lagts till i SVN',
+    'added': 'Filer som hanterats',
+}
 
 # INSTRUMENT_BG_COLORS = {
 #     'ifcb': '#75ff75',
@@ -69,13 +88,23 @@ def get_instrument_bg_color(inst):
     return INSTRUMENT_BG_COLORS.get(inst.lower(), DEFAULT_INSTRUMENT_BG_COLOR)
 
 
+def open_file_in_default_program(path: pathlib.Path):
+    path_str = str(path)
+    if platform.system() == 'Darwin':       # macOS
+        subprocess.call(('open', path_str))
+    elif platform.system() == 'Windows':    # Windows
+        os.startfile(path_str)
+    else:                                   # linux variants
+        subprocess.call(('xdg-open', path_str))
+
+
 DISABLED_ATTRIBUTES = [
     'ship'
 ]
 
 
 TRANSLATE = {
-    'source_directory': 'Källmapp',
+    'source_directory': 'Välj källmapp',
     'target_directory': 'Målmapp',
     'ship': 'Fartyg',
     'cruise': 'Cruise',
@@ -114,6 +143,8 @@ class FletApp:
         self._instrument_items = {}
         self._current_source_instrument = None
 
+        self._user_settings = UserSettings(USER_SETTINGS_PATH)
+
         self._toggle_buttons = []
 
         sdm_event.subscribe('after_write_packages', self._on_archiving_finished)
@@ -123,7 +154,7 @@ class FletApp:
         self.logging_format_stdout = '[%(levelname)10s] %(filename)s: %(funcName)s() [%(lineno)d] %(message)s'
         self._setup_logger()
 
-        self._logger = SDMLogger(report_directory=self._report_directory)
+        self._logger = SDMLogger(report_directory=REPORT_EXPORT_DIRECTORY)
 
         subscribe('on_progress', self._callback_on_progress)
 
@@ -137,6 +168,7 @@ class FletApp:
         self._add_report_bottom_sheet()
         self._build()
         self._initiate_banner()
+        self._user_settings.apply_settings()
 
     def _initiate_banner(self):
         self.banner_content = ft.Column()
@@ -173,6 +205,7 @@ class FletApp:
     def _build(self):
         self._config_row = ft.Row()
         self._root_source_row = ft.Row()
+        self._option_row = ft.Row()
         self._instrument_listview = ft.ListView(expand=1, spacing=10, padding=20, auto_scroll=False)
 
         padding = 10
@@ -182,9 +215,14 @@ class FletApp:
                                              padding=padding)
 
         self.root_source_container = ft.Container(content=self._root_source_row,
-                                             bgcolor=DEFAULT_INSTRUMENT_BG_COLOR,
-                                             border_radius=20,
-                                             padding=padding)
+                                                  bgcolor=DEFAULT_INSTRUMENT_BG_COLOR,
+                                                  border_radius=20,
+                                                  padding=padding)
+
+        self.option_container = ft.Container(content=self._option_row,
+                                                  bgcolor=DEFAULT_INSTRUMENT_BG_COLOR,
+                                                  border_radius=20,
+                                                  padding=padding)
 
         self.instrument_container = ft.Container(content=self._instrument_listview,
                                                  bgcolor=INSTRUMENT_SECTION_BG_COLOR,
@@ -194,6 +232,7 @@ class FletApp:
 
         self.page.controls.append(self.config_container)
         self.page.controls.append(self.root_source_container)
+        self.page.controls.append(self.option_container)
         self.page.controls.append(self.instrument_container)
 
         self._pick_source = ft.FilePicker(on_result=self._on_pick_source_dir)
@@ -203,6 +242,7 @@ class FletApp:
 
         self._build_select_config()
         self._build_select_root_source()
+        self._build_option_container()
         self._set_default_config()
         self.update_page()
 
@@ -242,12 +282,6 @@ class FletApp:
         #         shutil.rmtree(path)
 
     @property
-    def _report_directory(self):
-        path = pathlib.Path(DIRECTORY, 'reports')
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    @property
     def _log_directory(self):
         path = pathlib.Path(DIRECTORY, 'logs')
         path.mkdir(parents=True, exist_ok=True)
@@ -284,8 +318,20 @@ class FletApp:
 
         self._root_source_row.controls.append(tt)
 
-        # self._root_source_row.controls.append(btn)
-        # self._root_source_row.controls.append(self._data_root_directory)
+    def _build_option_container(self):
+        column = ft.Column()
+        open_report_row = ft.Row()
+        self._option_row.controls.append(column)
+
+        column.controls.append(ft.Text('Val av vilka filer/rapporter vill du öppna när arkiveringen är klar:'))
+        column.controls.append(open_report_row)
+
+        self._open_report_checkboxes = {}
+        for key, name in REPORT_NAME_MAPPING.items():
+            cb = ft.Checkbox(label=name, value=True)
+            self._open_report_checkboxes[key] = cb
+            self._user_settings.add_widget(name=f'open_report_{name}', widget=cb)
+            open_report_row.controls.append(cb)
 
     def _set_config_file(self, text=None):
         if not text:
@@ -341,7 +387,8 @@ class FletApp:
         self._toggle_buttons = []
         self._instrument_listview.controls = []
         btn = ft.ElevatedButton(text=f'Arkivera data från alla instrument',
-                                                  on_click=self._archive_all_data)
+                                bgcolor=ARCHIVE_BUTTON_COLOR,
+                                on_click=self._archive_all_data)
         self._toggle_buttons.append(btn)
         self._instrument_listview.controls.append(btn)
         if not self._config:
@@ -353,7 +400,7 @@ class FletApp:
         self._instrument_items[instrument] = {}
         padding = 10
         inst_col = ft.Column()
-        inst_col.controls.append(ft.Text(instrument.upper()))
+        inst_col.controls.append(ft.Text(instrument.upper(), weight=ft.FontWeight('bold')))
         for key, value in config.items():
             if key == 'attributes':
                 continue
@@ -365,6 +412,7 @@ class FletApp:
                 btn = ft.ElevatedButton(
                     translate(key),
                     # icon=ft.icons.UPLOAD_FILE,
+                    bgcolor=SOURCE_BUTTON_COLOR,
                     on_click=lambda e, inst=instrument: self._pick_source_dir(inst))
                 self._toggle_buttons.append(btn)
                 tt.content = btn
@@ -382,10 +430,12 @@ class FletApp:
         attributes = config.get('attributes')
         if attributes:
             self._add_attributes_container(parent=inst_col.controls, instrument=instrument, attributes=attributes)
-        tt = get_tooltip_widget(TOOLTIP_TEXT.archive_instrument(instrument))
+        # tt = get_tooltip_widget(TOOLTIP_TEXT.archive_instrument(instrument))
+        tt = get_tooltip_widget(None)
         run_row = ft.Row()
-        btn = ft.ElevatedButton(text=f'Arkivera {instrument}-data',
-                                                  on_click=lambda e, inst=instrument: self._archive_data(inst))
+        btn = ft.ElevatedButton(text=f'Arkivera {instrument.upper()}-data',
+                                bgcolor=ARCHIVE_BUTTON_COLOR,
+                                on_click=lambda e, inst=instrument: self._archive_data(inst))
         self._toggle_buttons.append(btn)
         run_row.controls.append(btn)
         pbar = ft.ProgressBar(width=400, value=0)
@@ -497,13 +547,35 @@ class FletApp:
         sdm.transform_packages()
         print('Writing')
         sdm.write_packages()
-        report_dir = self._write_report()
+        report_dir = self._write_reports()
+        self._open_reports(report_dir)
         self._show_result_ok(report_dir)
 
         for ins in config:
             self._progress_bars[ins.upper()].value = 0
             self._progress_texts[ins.upper()].value = 'Allt klart!'
         self.update_page()
+        self._user_settings.save_settings()
+
+    def _open_reports(self, report_dir: pathlib.Path) -> None:
+        sub_dirs = []
+        for inst, info in self._config.items():
+            if not info['source_directory']:
+                continue
+            sub_dirs.append(inst)
+
+        for inst in sub_dirs:
+            sub_dir = report_dir / inst
+            if not sub_dir.exists():
+                continue
+            for key, cb in list(self._open_report_checkboxes.items())[::-1]:  # To get the "most imported" report on top
+                if not cb.value:
+                    continue
+                for path in sub_dir.iterdir():
+                    if key in path.stem:
+                        open_file_in_default_program(path)
+                        time.sleep(0.1)
+                        break
 
     def _disable_toggle_buttons(self):
         for btn in self._toggle_buttons:
@@ -513,8 +585,8 @@ class FletApp:
         for btn in self._toggle_buttons:
             btn.disabled = False
 
-    def _write_report(self):
-        report_dir = self._logger.write_reports(self._report_directory)
+    def _write_reports(self):
+        report_dir = self._logger.write_reports(REPORT_EXPORT_DIRECTORY)
         return report_dir
 
     def _get_result_info(self, logger_info, bad_color_if_nr=False):
@@ -540,13 +612,13 @@ class FletApp:
         nr_not_copied_str = self._get_result_info( self._logger.get_nr_target_path_exists(), bad_color_if_nr=True)
 
         lv = ft.ListView()
-        button_row = ft.Row()
-        button_row.controls.append(ft.ElevatedButton('Öppna rapportmapp',
-                                                     on_click=lambda e,
-                                                                     directory=report_dir: self._open_report_directory(
-                                                         directory)))
-        button_row.controls.append(ft.ElevatedButton('OK',
-                                                     on_click=self._close_report_bottom_sheet))
+        # button_row = ft.Row()
+        # button_row.controls.append(ft.ElevatedButton('Öppna rapportmapp',
+        #                                              on_click=lambda e,
+        #                                                              directory=report_dir: self._open_report_directory(
+        #                                                  directory)))
+        # button_row.controls.append(ft.ElevatedButton('OK',
+        #                                              on_click=self._close_report_bottom_sheet))
         # lv.controls.append(button_row)  # This does not work in executable. Opens new instance instead
 
         ok_color = 'black'
@@ -575,13 +647,13 @@ class FletApp:
         for info in info_lst:
             lv.controls.append(ft.Text(f'{info[0]}\n', color=info[1]))
 
-        button_row = ft.Row()
-        button_row.controls.append(ft.ElevatedButton('Öppna rapportmapp',
-                                                     on_click=lambda e,
-                                                                     directory=report_dir: self._open_report_directory(
-                                                         directory)))
-        button_row.controls.append(ft.ElevatedButton('OK',
-                                                     on_click=self._close_report_bottom_sheet))
+        # button_row = ft.Row()
+        # button_row.controls.append(ft.ElevatedButton('Öppna rapportmapp',
+        #                                              on_click=lambda e,
+        #                                                              directory=report_dir: self._open_report_directory(
+        #                                                  directory)))
+        # button_row.controls.append(ft.ElevatedButton('OK',
+        #                                              on_click=self._close_report_bottom_sheet))
         # lv.controls.append(button_row) # This does not work in executable. Opens new instance instead
         self._report_container.content = lv
         self._report_bottom_sheet.open = True

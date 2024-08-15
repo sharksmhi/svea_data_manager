@@ -1,6 +1,7 @@
 mw_*
 store_*
 temp_*
+default_config
 
 .idea/
 log/
