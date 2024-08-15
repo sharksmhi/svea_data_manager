@@ -111,8 +111,11 @@ class SveaDataManager:
                 logger.error(msg)
                 raise ValueError(msg)
 
+            print('I')
             instrument = instrument_cls(config[instrument_type])
+            print('II')
             instance.register_instrument(instrument)
+            print('III')
 
         return instance
 
