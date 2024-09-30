@@ -2,6 +2,37 @@ import math
 import flet as ft
 
 
+class Tooltips:
+    def __init__(self):
+        self._widgets: dict[str, dict[str, ft.Tooltip | ft.Container]] = {}
+
+    def get_container(self) -> ft.Container:
+        return ft.Container()
+
+    def get_tooltip(self, instrument: str, attribute: str) -> ft.Tooltip:
+        inst = instrument.upper()
+        self._widgets.setdefault(inst, {})
+        tt = get_tooltip_widget('')
+        self._widgets[inst][attribute] = tt
+        return tt
+
+    def set_source_directory_not_present(self, instrument: str = None) -> None:
+        for inst, info in self._widgets.items():
+            if instrument and inst.upper() != instrument.upper():
+                continue
+            wid = info['source_directory']
+            wid.message = f'Ingen källmapp vald. Välj en mapp där {inst.upper()}- data ligger för att arkivera. '
+            wid.update()
+
+    def set_source_directory_present(self, instrument: str = None) -> None:
+        for inst, info in self._widgets.items():
+            if instrument and inst.upper() != instrument.upper():
+                continue
+            wid = info['source_directory']
+            wid.message = f'Källmapp är vald för arkivering'
+            wid.update()
+
+
 class TooltipTexts:
 
     @property

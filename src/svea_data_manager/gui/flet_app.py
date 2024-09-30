@@ -13,7 +13,7 @@ import yaml
 
 from svea_data_manager import SveaDataManager
 from svea_data_manager import sdm_event
-from svea_data_manager.gui.tooltip_texts import TooltipTexts, get_tooltip_widget
+from svea_data_manager.gui.tooltip_texts import TooltipTexts, get_tooltip_widget, Tooltips
 from svea_data_manager.sdm_event import subscribe
 from svea_data_manager.sdm_logger import SDMLogger
 from svea_data_manager.gui.user_settings import UserSettings
@@ -147,6 +147,8 @@ class FletApp:
 
         self._toggle_buttons = []
 
+        self._tooltips = Tooltips()
+
         sdm_event.subscribe('after_write_packages', self._on_archiving_finished)
 
         self.logging_level = 'DEBUG'
@@ -169,6 +171,7 @@ class FletApp:
         self._build()
         self._initiate_banner()
         self._user_settings.apply_settings()
+        self._tooltips.set_source_directory_not_present()
 
     def _initiate_banner(self):
         self.banner_content = ft.Column()
@@ -364,8 +367,10 @@ class FletApp:
 
     def _on_pick_source_dir(self, e: ft.FilePickerResultEvent):
         if not e.path:
+            self._tooltips.set_source_directory_not_present(self._current_source_instrument)
             return
         self._instrument_items[self._current_source_instrument]['source_directory'].value = e.path
+        self._tooltips.set_source_directory_present(self._current_source_instrument)
         self.update_page()
         self._current_source_instrument = None
 
@@ -408,7 +413,8 @@ class FletApp:
                 value = ''
             row = ft.Row()
             if key == 'source_directory':
-                tt = get_tooltip_widget(TOOLTIP_TEXT.source_directory(instrument.upper()))
+                # tt = get_tooltip_widget(TOOLTIP_TEXT.source_directory(instrument.upper()))
+                tt = self._tooltips.get_tooltip(instrument, key)
                 btn = ft.ElevatedButton(
                     translate(key),
                     # icon=ft.icons.UPLOAD_FILE,
