@@ -51,6 +51,7 @@ class IFCBclassification(Instrument):
         resource = self._get_class_resource_from_package(package)
         self._add_classifier_file(package, resource)
         self._add_manual_files(package, resource)
+        self._add_config_files(package, resource)
 
     @staticmethod
     def _get_class_resource_from_package(package: Package) -> "IFCBResourceClass":
@@ -77,6 +78,20 @@ class IFCBclassification(Instrument):
                 continue
             manual = IFCBResourceManual(path.parent, pathlib.Path(path.name), class_file=resource)
             package.resources.add(manual)
+
+    @staticmethod
+    def _add_config_files(package: Package, resource: "IFCBResourceClass") -> None:
+        source_dir = resource.config_directory
+        files = [
+            source_dir / f'class2use_{resource.area_name}.mat',
+            source_dir / f'config_{resource.area_name}.mcconfig.mat',
+        ]
+        for path in files:
+            print(f'{path=}')
+            if not path.exists():
+                raise FileNotFoundError(path)
+            config = IFCBResourceConfig(path.parent, pathlib.Path(path.name), class_file=resource)
+            package.resources.add(config)
 
     def write_package(self, package):
         resource = self._get_class_resource_from_package(package)
@@ -187,7 +202,7 @@ class IFCBResourceClassifier(Resource):
     @property
     def target_path(self):
         return pathlib.Path(self._class_file.attributes['instrument'], 'classifications',
-                            self._class_file.package_key, 'manual', 'summary', self.source_path.name)
+                            self._class_file.package_key, 'manual', self._class_file.area_name, 'summary', self.source_path.name)
 
 
 class IFCBResourceManual(Resource):
@@ -200,7 +215,20 @@ class IFCBResourceManual(Resource):
     @property
     def target_path(self):
         return pathlib.Path(self._class_file.attributes['instrument'], 'classifications',
-                            self._class_file.package_key, 'manual', self.source_path.name)
+                            self._class_file.package_key, 'manual', self._class_file.area_name, self.source_path.name)
+
+
+class IFCBResourceConfig(Resource):
+
+    def __init__(self, source_directory, path, attributes=None, class_file: IFCBResourceClass = None):
+        attributes = attributes or {}
+        super().__init__(source_directory, path, attributes)
+        self._class_file = class_file
+
+    @property
+    def target_path(self):
+        return pathlib.Path(self._class_file.attributes['instrument'], 'classifications',
+                            self._class_file.package_key, 'config', self.source_path.name)
 
 
 
