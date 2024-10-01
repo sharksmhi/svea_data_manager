@@ -1,3 +1,4 @@
+import datetime
 import logging
 import pathlib
 import re
@@ -52,6 +53,7 @@ class IFCBclassification(Instrument):
         self._add_classifier_file(package, resource)
         self._add_manual_files(package, resource)
         self._add_config_files(package, resource)
+        self._add_readme(package, resource)
 
     @staticmethod
     def _get_class_resource_from_package(package: Package) -> "IFCBResourceClass":
@@ -92,6 +94,20 @@ class IFCBclassification(Instrument):
                 raise FileNotFoundError(path)
             config = IFCBResourceConfig(path.parent, pathlib.Path(path.name), class_file=resource)
             package.resources.add(config)
+
+    def _add_readme(self, package: Package, resource: "IFCBResourceClass"):
+        lines = [
+            f'Package name: {resource.package_key}',
+            f'Source directory: {resource.absolute_source_path.parent}',
+            f'Classifier name: {resource.classifier_name}',
+            f'Import datetime: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}',
+            f'Imported by: {pathlib.Path.home().name}',
+        ]
+        readme_path = helpers.get_temp_directory() / 'readme.txt'
+        with open(readme_path, 'w') as fid:
+            fid.write('\n'.join(lines))
+        config = IFCBResourceClassReadme(readme_path.parent, pathlib.Path(readme_path.name), class_file=resource)
+        package.resources.add(config)
 
     def write_package(self, package):
         resource = self._get_class_resource_from_package(package)
@@ -229,6 +245,19 @@ class IFCBResourceConfig(Resource):
     def target_path(self):
         return pathlib.Path(self._class_file.attributes['instrument'], 'classifications',
                             self._class_file.package_key, 'config', self.source_path.name)
+
+
+class IFCBResourceClassReadme(Resource):
+
+    def __init__(self, source_directory, path, attributes=None, class_file: IFCBResourceClass = None):
+        attributes = attributes or {}
+        super().__init__(source_directory, path, attributes)
+        self._class_file = class_file
+
+    @property
+    def target_path(self):
+        return pathlib.Path(self._class_file.attributes['instrument'], 'classifications',
+                            self._class_file.package_key, 'readme.txt')
 
 
 
