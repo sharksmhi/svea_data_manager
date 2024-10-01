@@ -25,11 +25,15 @@ class ClassifierMatFile:
 
     @property
     def classifier_name(self):
-        return self._classifier_name.split('.')[0]
+        return self.classifier_original_path.name
+
+    @property
+    def classifier_original_path(self):
+        return self._classifier_original_path
 
     def _save_info(self):
-        mat = scipy.io.loadmat(self.path, simplify_cells=True)
-        self._classifier_name = pathlib.Path(mat['classifierName']).name
+        mat = scipy.io.loadmat(str(self.path), simplify_cells=True)
+        self._classifier_original_path = pathlib.Path(mat['classifierName'].split('.')[0] + '.mat')
 
 
 def load_individual_mat_files(self, directory):

@@ -159,7 +159,6 @@ class SubversionStorage(Storage):
         for nr, resource in enumerate(package.resources):
             instrument = package.instrument
             absolute_source_path = resource.absolute_source_path
-            print(f'{resource.attributes=}')
             svn_message = resource.attributes.get('svn_commit_message')
             if svn_message:
                 messages.add(svn_message)

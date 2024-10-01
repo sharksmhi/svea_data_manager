@@ -56,3 +56,8 @@ class ShipError(Exception):
 class NoInstrumentInformation(Exception):
     """Cannot find information about instrument"""
     pass
+
+
+class TargetPathExists(Exception):
+    """The target path exists"""
+    pass

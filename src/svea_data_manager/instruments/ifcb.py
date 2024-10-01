@@ -57,7 +57,7 @@ class IFCB(Instrument):
 
     def transform_packages(self):
         super().transform_packages()
-        self._create_result_package()
+        # self._create_result_package()
 
     def transform_package(self, package, **kwargs):
         # Look for hdr and metadata file
@@ -95,29 +95,29 @@ class IFCB(Instrument):
     def _get_result_file_stem(instrument):
         return f'result_{instrument}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}'
 
-    def _create_result_package(self):
-        raw_file_stems = {}
-        include_file_paths = {}
-        instrument_name = None
-        for pack in self.packages:
-            for resource in pack.resources:
-                if not instrument_name:
-                    instrument_name = resource.attributes.get('instrument')
-                if isinstance(resource, (IFCBResourceRaw, IFCBResourceProcessed)):
-                    raw_file_stems.setdefault(instrument_name, set())
-                    raw_file_stems[instrument_name].add(resource.absolute_source_path.stem)
-                    continue
-                include_file_paths.setdefault(instrument_name, [])
-                include_file_paths[instrument_name].append(resource.absolute_source_path)
-        for instrument, file_paths in include_file_paths.items():
-            file_stem = self._get_result_file_stem(instrument)
-            zip_file_path = pathlib.Path(helpers.get_temp_directory(), f'{file_stem}.zip')
-            txt_file_path = pathlib.Path(helpers.get_temp_directory(), f'{file_stem}.txt')
-            helpers.create_zip_file(file_paths, zip_file_path, rel_path=self.config['source_directory'])
-            self._create_result_txt_file(sorted(raw_file_stems[instrument]), txt_file_path)
-            print(f'{zip_file_path=}')
-            reso = self.add_file(zip_file_path)
-            post_event('on_transform_add_file', dict(instrument=self.name, resource=reso, name=zip_file_path))
+    # def _create_result_package(self):
+    #     raw_file_stems = {}
+    #     include_file_paths = {}
+    #     instrument_name = None
+    #     for pack in self.packages:
+    #         for resource in pack.resources:
+    #             if not instrument_name:
+    #                 instrument_name = resource.attributes.get('instrument')
+    #             if isinstance(resource, (IFCBResourceRaw, IFCBResourceProcessed)):
+    #                 raw_file_stems.setdefault(instrument_name, set())
+    #                 raw_file_stems[instrument_name].add(resource.absolute_source_path.stem)
+    #                 continue
+    #             include_file_paths.setdefault(instrument_name, [])
+    #             include_file_paths[instrument_name].append(resource.absolute_source_path)
+    #     for instrument, file_paths in include_file_paths.items():
+    #         file_stem = self._get_result_file_stem(instrument)
+    #         zip_file_path = pathlib.Path(helpers.get_temp_directory(), f'{file_stem}.zip')
+    #         txt_file_path = pathlib.Path(helpers.get_temp_directory(), f'{file_stem}.txt')
+    #         helpers.create_zip_file(file_paths, zip_file_path, rel_path=self.config['source_directory'])
+    #         self._create_result_txt_file(sorted(raw_file_stems[instrument]), txt_file_path)
+    #         print(f'{zip_file_path=}')
+    #         reso = self.add_file(zip_file_path)
+    #         post_event('on_transform_add_file', dict(instrument=self.name, resource=reso, name=zip_file_path))
 
     def _create_result_txt_file(self, file_paths, txt_result_file_path):
         with open(txt_result_file_path, 'w') as fid:
@@ -174,7 +174,7 @@ class IFCBResourceRaw(IFCBResource):
     def target_path(self):
         subdir = f"D{self.attributes['year']}{self.attributes['month']}{self.attributes['day']}"
         file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
-        return pathlib.Path(self.attributes['instrument'], 'data_raw', f"D{self.attributes['year']}", subdir, file_name)
+        return pathlib.Path(self.attributes['instrument'], 'data', f"{self.attributes['year']}", subdir, file_name)
 
     @staticmethod
     def from_source_file(root_directory, source_file):
@@ -237,7 +237,7 @@ class IFCBResourceProcessed(IFCBResource):
         subdir = f"D{self.attributes['year']}{self.attributes['month']}{self.attributes['day']}"
         file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
         return pathlib.Path(self.attributes['instrument'], f'{process_type}',
-                            f"D{self.attributes['year']}", subdir, file_name)
+                            f"{self.attributes['year']}", subdir, file_name)
 
     @staticmethod
     def from_source_file(root_directory, source_file):
@@ -248,152 +248,153 @@ class IFCBResourceProcessed(IFCBResource):
                 return IFCBResourceProcessed(root_directory, source_file, attributes)
 
 
-class IFCBResourceClassification(IFCBResource):
-
-    PATTERNS = [
-        re.compile('^D{}{}{}T{}{}{}_{}_{}{}.mat$'.format('(?P<year>\d{4})',
-                                                         '(?P<month>\d{2})',
-                                                         '(?P<day>\d{2})',
-                                                         '(?P<hour>\d{2})',
-                                                         '(?P<minute>\d{2})',
-                                                         '(?P<second>\d{2})',
-                                                         '(?P<instrument>IFCB\d*)',
-                                                         '(?P<process_type>class)',
-                                                         '(?P<version>.*)',
-                                                         )
-                   ),
-
-        re.compile('^summary_allTB_{}.mat$'.format('(?P<year>\d{4})')),
-        re.compile('^summary_biovol_allTB2{}.mat$'.format('(?P<year>\d{4})')),
-    ]
-
-    @property
-    def target_path(self):
-        return
-        # subdir = f"D{self.attributes['year']}{self.attributes['month']}{self.attributes['day']}"
-        # file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
-        # return pathlib.Path(self.attributes['instrument'], f'{self.attributes["process_type"]}',
-        #                     f"D{self.attributes['year']}", subdir, file_name)
-
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in IFCBResourceClassification.PATTERNS:
-            name_match = PATTERN.search(source_file.name)
-            if name_match:
-                attributes = name_match.groupdict()
-                return IFCBResourceClassification(root_directory, source_file, attributes)
-
-
-class IFCBResourceManual(IFCBResource):
-
-    PATTERNS = [
-        re.compile('^D{}{}{}T{}{}{}_{}.mat$'.format('(?P<year>\d{4})',
-                                                         '(?P<month>\d{2})',
-                                                         '(?P<day>\d{2})',
-                                                         '(?P<hour>\d{2})',
-                                                         '(?P<minute>\d{2})',
-                                                         '(?P<second>\d{2})',
-                                                         '(?P<instrument>IFCB\d*)',
-                                                         )
-                   ),
-    ]
-
-    @property
-    def target_path(self):
-        return
-
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in IFCBResourceManual.PATTERNS:
-            name_match = PATTERN.search(source_file.name)
-            if name_match:
-                attributes = name_match.groupdict()
-                return IFCBResourceManual(root_directory, source_file, attributes)
+# class IFCBResourceClassification(IFCBResource):
+#
+#     PATTERNS = [
+#         re.compile('^D{}{}{}T{}{}{}_{}_{}{}.mat$'.format('(?P<year>\d{4})',
+#                                                          '(?P<month>\d{2})',
+#                                                          '(?P<day>\d{2})',
+#                                                          '(?P<hour>\d{2})',
+#                                                          '(?P<minute>\d{2})',
+#                                                          '(?P<second>\d{2})',
+#                                                          '(?P<instrument>IFCB\d*)',
+#                                                          '(?P<process_type>class)',
+#                                                          '(?P<version>.*)',
+#                                                          )
+#                    ),
+#
+#         re.compile('^summary_allTB_{}.mat$'.format('(?P<year>\d{4})')),
+#         re.compile('^summary_biovol_allTB2{}.mat$'.format('(?P<year>\d{4})')),
+#     ]
+#
+#     @property
+#     def target_path(self):
+#         return
+#         # subdir = f"D{self.attributes['year']}{self.attributes['month']}{self.attributes['day']}"
+#         # file_name = f'{self.source_path.stem.upper()}{self.source_path.suffix.lower()}'
+#         # return pathlib.Path(self.attributes['instrument'], f'{self.attributes["process_type"]}',
+#         #                     f"D{self.attributes['year']}", subdir, file_name)
+#
+#     @staticmethod
+#     def from_source_file(root_directory, source_file):
+#         for PATTERN in IFCBResourceClassification.PATTERNS:
+#             name_match = PATTERN.search(source_file.name)
+#             if name_match:
+#                 attributes = name_match.groupdict()
+#                 return IFCBResourceClassification(root_directory, source_file, attributes)
 
 
-class IFCBResourceSummary(IFCBResource):
-
-    PATTERNS = [
-        re.compile('^biovolume.csv$'),
-        re.compile('^class2use.csv$'),
-        re.compile('^classcount.csv$'),
-        re.compile('^date.csv$'),
-        re.compile('^filelistTB.csv$'),
-        re.compile('^ml_analyzed.csv$'),
-        # re.compile('^results_{}{}{}T{}{}{}_{}.mat$'.format('(?P<day>\d{2})',
-        #                                                  '(?P<month>\D+)',
-        #                                                  '(?P<year>\d{4})',
-        #                                                  '(?P<hour>\d{2})',
-        #                                                  '(?P<minute>\d{2})',
-        #                                                  '(?P<second>\d{2})',
-        #                                                  '(?P<instrument>IFCB\d*)',
-        #                                                  )
-        #            ),
-    ]
-
-    @property
-    def target_path(self):
-        return
-
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in IFCBResourceSummary.PATTERNS:
-            name_match = PATTERN.search(source_file.name)
-            if name_match:
-                attributes = name_match.groupdict()
-                return IFCBResourceSummary(root_directory, source_file, attributes)
-
-
-class IFCBResourceConfig(IFCBResource):
-
-    PATTERNS = [
-        re.compile('^class2use_{}.mat$'.format('(?P<area>.+)')),
-        re.compile('^(?P<area>.+)[.]mcconfig.mat$'),
-    ]
-
-    @property
-    def target_path(self):
-        return
-
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in IFCBResourceConfig.PATTERNS:
-            name_match = PATTERN.search(source_file.name)
-            if name_match:
-                attributes = name_match.groupdict()
-                return IFCBResourceConfig(root_directory, source_file, attributes)
-
-
-class IFCBResourceResult(IFCBResource):
-
-    PATTERNS = [
-        re.compile('^result_{}_{}{}{}_{}{}{}{}$'.format('(?P<instrument>IFCB\d*)',
-                                                         '(?P<year>\d{4})',
-                                                         '(?P<month>\d{2})',
-                                                         '(?P<day>\d{2})',
-                                                         '(?P<hour>\d{2})',
-                                                         '(?P<minute>\d{2})',
-                                                         '(?P<second>\d{2})',
-                                                         '(?P<suffix>\.zip|\.txt)',
-                                                         )
-                   ),
-
-    ]
-
-    @property
-    def target_path(self):
-        return
-        # return pathlib.Path(self.attributes['instrument'], f'results', self.source_path.name)
-
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in IFCBResourceResult.PATTERNS:
-            name_match = PATTERN.search(source_file.name)
-            if name_match:
-                attributes = name_match.groupdict()
-                print(f'{root_directory=}')
-                print(f'{source_file=}')
-                return IFCBResourceResult(root_directory, source_file, attributes)
+# class IFCBResourceManual(IFCBResource):
+#
+#     PATTERNS = [
+#         re.compile('^D{}{}{}T{}{}{}_{}.mat$'.format('(?P<year>\d{4})',
+#                                                          '(?P<month>\d{2})',
+#                                                          '(?P<day>\d{2})',
+#                                                          '(?P<hour>\d{2})',
+#                                                          '(?P<minute>\d{2})',
+#                                                          '(?P<second>\d{2})',
+#                                                          '(?P<instrument>IFCB\d*)',
+#                                                          )
+#                    ),
+#     ]
+#
+#     @property
+#     def target_path(self):
+#         return
+#
+#     @staticmethod
+#     def from_source_file(root_directory, source_file):
+#         for PATTERN in IFCBResourceManual.PATTERNS:
+#             name_match = PATTERN.search(source_file.name)
+#             if name_match:
+#                 attributes = name_match.groupdict()
+#                 return IFCBResourceManual(root_directory, source_file, attributes)
+#
+#
+# class IFCBResourceSummary(IFCBResource):
+#
+#     PATTERNS = [
+#         re.compile('^biovolume.csv$'),
+#         re.compile('^class2use.csv$'),
+#         re.compile('^classcount.csv$'),
+#         re.compile('^date.csv$'),
+#         re.compile('^filelistTB.csv$'),
+#         re.compile('^ml_analyzed.csv$'),
+#         # re.compile('^results_{}{}{}T{}{}{}_{}.mat$'.format('(?P<day>\d{2})',
+#         # re.compile('^results_{}{}{}T{}{}{}_{}.mat$'.format('(?P<day>\d{2})',
+#         #                                                  '(?P<month>\D+)',
+#         #                                                  '(?P<year>\d{4})',
+#         #                                                  '(?P<hour>\d{2})',
+#         #                                                  '(?P<minute>\d{2})',
+#         #                                                  '(?P<second>\d{2})',
+#         #                                                  '(?P<instrument>IFCB\d*)',
+#         #                                                  )
+#         #            ),
+#     ]
+#
+#     @property
+#     def target_path(self):
+#         return
+#
+#     @staticmethod
+#     def from_source_file(root_directory, source_file):
+#         for PATTERN in IFCBResourceSummary.PATTERNS:
+#             name_match = PATTERN.search(source_file.name)
+#             if name_match:
+#                 attributes = name_match.groupdict()
+#                 return IFCBResourceSummary(root_directory, source_file, attributes)
+#
+#
+# class IFCBResourceConfig(IFCBResource):
+#
+#     PATTERNS = [
+#         re.compile('^class2use_{}.mat$'.format('(?P<area>.+)')),
+#         re.compile('^(?P<area>.+)[.]mcconfig.mat$'),
+#     ]
+#
+#     @property
+#     def target_path(self):
+#         return
+#
+#     @staticmethod
+#     def from_source_file(root_directory, source_file):
+#         for PATTERN in IFCBResourceConfig.PATTERNS:
+#             name_match = PATTERN.search(source_file.name)
+#             if name_match:
+#                 attributes = name_match.groupdict()
+#                 return IFCBResourceConfig(root_directory, source_file, attributes)
+#
+#
+# class IFCBResourceResult(IFCBResource):
+#
+#     PATTERNS = [
+#         re.compile('^result_{}_{}{}{}_{}{}{}{}$'.format('(?P<instrument>IFCB\d*)',
+#                                                          '(?P<year>\d{4})',
+#                                                          '(?P<month>\d{2})',
+#                                                          '(?P<day>\d{2})',
+#                                                          '(?P<hour>\d{2})',
+#                                                          '(?P<minute>\d{2})',
+#                                                          '(?P<second>\d{2})',
+#                                                          '(?P<suffix>\.zip|\.txt)',
+#                                                          )
+#                    ),
+#
+#     ]
+#
+#     @property
+#     def target_path(self):
+#         return
+#         # return pathlib.Path(self.attributes['instrument'], f'results', self.source_path.name)
+#
+#     @staticmethod
+#     def from_source_file(root_directory, source_file):
+#         for PATTERN in IFCBResourceResult.PATTERNS:
+#             name_match = PATTERN.search(source_file.name)
+#             if name_match:
+#                 attributes = name_match.groupdict()
+#                 print(f'{root_directory=}')
+#                 print(f'{source_file=}')
+#                 return IFCBResourceResult(root_directory, source_file, attributes)
 
 
 
