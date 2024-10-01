@@ -103,6 +103,8 @@ class IFCBclassification(Instrument):
             f'Import datetime: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}',
             f'Imported by: {pathlib.Path.home().name}',
         ]
+        for key, value in self._config.get('attributes', {}).items():
+            lines.append(f'{key.capitalize()}: {value}')
         readme_path = helpers.get_temp_directory() / 'readme.txt'
         with open(readme_path, 'w') as fid:
             fid.write('\n'.join(lines))
