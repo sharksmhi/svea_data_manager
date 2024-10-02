@@ -15,7 +15,7 @@ from svea_data_manager import SveaDataManager
 from svea_data_manager.sdm_logger import SDMLogger
 from svea_data_manager import sdm_event
 from svea_data_manager.sdm_event import subscribe
-from svea_data_manager.gui.tooltip_texts import TooltipTexts, get_tooltip_widget
+# from svea_data_manager.gui.tooltip_texts import TooltipTexts, get_tooltip_widget
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +32,18 @@ CONFIG_BG_COLOR = '#DAE2B6'
 DEFAULT_INSTRUMENT_BG_COLOR = '#CCD6A6'
 ATTRIBUTES_COLOR = '#F7EDDB'
 
+INFO_BG_COLOR_GOOD = '#6FB0F1'
+INFO_BG_COLOR_BAD = '#FF8080'
+
+INFO_COLOR_MAPPING = {
+    'good': INFO_BG_COLOR_GOOD,
+    'bad': INFO_BG_COLOR_BAD,
+}
+
 MISSING_CONFIG_TEXT = '< Ingen konfigurationsfil vald >'
 MISSING_DATA_ROOT_TEXT = '< Ingen rotkatalog för källdata vald >'
 
-TOOLTIP_TEXT = TooltipTexts()
+# TOOLTIP_TEXT = TooltipTexts()
 
 # INSTRUMENT_BG_COLORS = {
 #     'ifcb': '#75ff75',
@@ -183,6 +191,8 @@ class FletApp:
         self._root_source_row = ft.Row()
         self._instrument_listview = ft.ListView(expand=1, spacing=10, padding=20, auto_scroll=False)
 
+        self._info_text = ft.Text(color=INFO_BG_COLOR_GOOD)
+
         padding = 10
         self.config_container = ft.Container(content=self._config_row,
                                              bgcolor=CONFIG_BG_COLOR,
@@ -203,6 +213,7 @@ class FletApp:
         self.page.controls.append(self.config_container)
         self.page.controls.append(self.root_source_container)
         self.page.controls.append(self.instrument_container)
+        self.page.controls.append(self._info_text)
 
         self._pick_source = ft.FilePicker(on_result=self._on_pick_source_dir)
         self._pick_source_root = ft.FilePicker(on_result=self._on_pick_source_root_dir)
@@ -263,6 +274,11 @@ class FletApp:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
+    def _set_info_text(self, text: str = '', color: str = 'good') -> None:
+        self._info_text.value = text
+        self._info_text.color = INFO_COLOR_MAPPING[color]
+        self._info_text.update()
+
     def _build_select_config(self):
         file_picker = ft.FilePicker(on_result=self._pick_config_file)
         self.page.overlay.append(file_picker)
@@ -275,10 +291,10 @@ class FletApp:
         row.controls.append(btn)
         row.controls.append(self._config_path)
 
-        tt = get_tooltip_widget(TOOLTIP_TEXT.config_file)
-        tt.content = row
+        # tt = get_tooltip_widget(TOOLTIP_TEXT.config_file)
+        # tt.content = row
 
-        self._config_row.controls.append(tt)
+        self._config_row.controls.append(row)
 
     def _build_select_root_source(self):
         btn = ft.ElevatedButton("Välj rotkatalog för data", on_click=self._pick_source_root_dir)
@@ -289,10 +305,10 @@ class FletApp:
         row.controls.append(btn)
         row.controls.append(self._data_root_directory)
 
-        tt = get_tooltip_widget(TOOLTIP_TEXT.root_directory)
-        tt.content = row
+        # tt = get_tooltip_widget(TOOLTIP_TEXT.root_directory)
+        # tt.content = row
 
-        self._root_source_row.controls.append(tt)
+        self._root_source_row.controls.append(row)
 
         # self._root_source_row.controls.append(btn)
         # self._root_source_row.controls.append(self._data_root_directory)
@@ -384,14 +400,14 @@ class FletApp:
                 value = ''
             row = ft.Row()
             if key == 'source_directory':
-                tt = get_tooltip_widget(TOOLTIP_TEXT.source_directory(instrument.upper()))
+                # tt = get_tooltip_widget(TOOLTIP_TEXT.source_directory(instrument.upper()))
                 btn = ft.ElevatedButton(
                     translate(key),
                     # icon=ft.icons.UPLOAD_FILE,
                     on_click=lambda e, inst=instrument: self._pick_source_dir(inst))
                 self._toggle_buttons.append(btn)
-                tt.content = btn
-                row.controls.append(tt)
+                # tt.content = btn
+                row.controls.append(btn)
                 self._instrument_items[instrument][key] = ft.Text(value or '')
                 row.controls.append(self._instrument_items[instrument][key])
             elif type(value) == bool:
@@ -405,7 +421,7 @@ class FletApp:
         attributes = config.get('attributes')
         if attributes:
             self._add_attributes_container(parent=inst_col.controls, instrument=instrument, attributes=attributes)
-        tt = get_tooltip_widget(TOOLTIP_TEXT.archive_instrument(instrument))
+        # tt = get_tooltip_widget(TOOLTIP_TEXT.archive_instrument(instrument))
         run_row = ft.Row()
         btn = ft.ElevatedButton(text=f'Arkivera {instrument}-data',
                                                   on_click=lambda e, inst=instrument: self._archive_data(inst))
@@ -420,8 +436,8 @@ class FletApp:
         self._progress_bars[instrument.upper()] = pbar
         self._progress_texts[instrument.upper()] = progress_text
 
-        tt.content = run_row
-        inst_col.controls.append(tt)
+        # tt.content = run_row
+        inst_col.controls.append(run_row)
 
         container = ft.Container(content=inst_col,
                                  bgcolor=get_instrument_bg_color(instrument),
@@ -465,12 +481,12 @@ class FletApp:
             if key.lower() in DISABLED_ATTRIBUTES:
                 attr.disabled = True
 
-            msg = TOOLTIP_TEXT.default_attribute
-            if key == 'ship':
-                msg = TOOLTIP_TEXT.ship
-            elif key == 'cruise':
-                msg = TOOLTIP_TEXT.cruise
-            tt = get_tooltip_widget(msg)
+            # msg = TOOLTIP_TEXT.default_attribute
+            # if key == 'ship':
+            #     msg = TOOLTIP_TEXT.ship
+            # elif key == 'cruise':
+            #     msg = TOOLTIP_TEXT.cruise
+            # tt = get_tooltip_widget(msg)
 
             row = ft.Row()
             row.controls.append(attr)
@@ -482,8 +498,8 @@ class FletApp:
                 self._toggle_buttons.append(btn)
                 row.controls.append(btn)
 
-            tt.content = row
-            attr_col.controls.append(tt)
+            # tt.content = row
+            attr_col.controls.append(row)
 
             self._attributes[instrument][key] = attr
 
