@@ -133,10 +133,10 @@ class FletApp:
 
         sdm_event.subscribe('after_write_packages', self._on_archiving_finished)
 
-        self.logging_level = 'DEBUG'
-        self.logging_format = '%(asctime)s [%(levelname)10s]    %(pathname)s [%(lineno)d] => %(funcName)s():    %(message)s'
-        self.logging_format_stdout = '[%(levelname)10s] %(filename)s: %(funcName)s() [%(lineno)d] %(message)s'
-        self._setup_logger()
+        # self.logging_level = 'DEBUG'
+        # self.logging_format = '%(asctime)s [%(levelname)10s]    %(pathname)s [%(lineno)d] => %(funcName)s():    %(message)s'
+        # self.logging_format_stdout = '[%(levelname)10s] %(filename)s: %(funcName)s() [%(lineno)d] %(message)s'
+        # self._setup_logger()
 
         self._logger = SDMLogger(report_directory=self._report_directory)
 
@@ -231,25 +231,25 @@ class FletApp:
     def update_page(self):
         self.page.update()
 
-    def _setup_logger(self, **kwargs):
-        name = 'sdm'
-        # self.logger = logging.getLogger(name)
-        self.logger = logging.getLogger()
-        self.logger.setLevel(self.logging_level)
-
-        debug_file_path = pathlib.Path(self._log_directory, f'{name}_debug.log')
-        handler = logging.handlers.TimedRotatingFileHandler(str(debug_file_path), when='H', interval=3, backupCount=10)
-        handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(self.logging_format)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-
-        debug_file_path = pathlib.Path(self._log_directory, f'{name}_warning.log')
-        handler = logging.handlers.TimedRotatingFileHandler(str(debug_file_path), when='D', interval=1, backupCount=14)
-        handler.setLevel(logging.WARNING)
-        formatter = logging.Formatter(self.logging_format)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+    # def _setup_logger(self, **kwargs):
+    #     name = 'sdm'
+    #     # self.logger = logging.getLogger(name)
+    #     self.logger = logging.getLogger()
+    #     self.logger.setLevel(self.logging_level)
+    #
+    #     debug_file_path = pathlib.Path(self._log_directory, f'{name}_debug.log')
+    #     handler = logging.handlers.TimedRotatingFileHandler(str(debug_file_path), when='H', interval=3, backupCount=10)
+    #     handler.setLevel(logging.DEBUG)
+    #     formatter = logging.Formatter(self.logging_format)
+    #     handler.setFormatter(formatter)
+    #     self.logger.addHandler(handler)
+    #
+    #     debug_file_path = pathlib.Path(self._log_directory, f'{name}_warning.log')
+    #     handler = logging.handlers.TimedRotatingFileHandler(str(debug_file_path), when='D', interval=1, backupCount=14)
+    #     handler.setLevel(logging.WARNING)
+    #     formatter = logging.Formatter(self.logging_format)
+    #     handler.setFormatter(formatter)
+    #     self.logger.addHandler(handler)
 
     def _cleanup_reports(self):
         self._logger.cleanup_reports(nr_days_old=CLEANUP_LOG_AFTER_NR_DAYS)
