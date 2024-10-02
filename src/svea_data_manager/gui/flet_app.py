@@ -19,10 +19,13 @@ from svea_data_manager.sdm_event import subscribe
 
 logger = logging.getLogger(__name__)
 
-if getattr(sys, 'frozen', False):
-    DIRECTORY = pathlib.Path(sys.executable).parent
-else:
-    DIRECTORY = pathlib.Path(__file__).parent
+# if getattr(sys, 'frozen', False):
+#     DIRECTORY = pathlib.Path(sys.executable).parent
+# else:
+#     DIRECTORY = pathlib.Path(__file__).parent
+
+DIRECTORY = pathlib.Path().home() / 'svea_data_manager'
+DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_CONFIG_SAVE_PATH = pathlib.Path(DIRECTORY, 'default_config')
 
@@ -71,6 +74,16 @@ INSTRUMENT_BG_COLORS = {
 }
 
 CLEANUP_LOG_AFTER_NR_DAYS = 7
+
+
+def open_directory(*args: str | pathlib.Path) -> None:
+    for arg in args:
+        os.startfile(str(arg))
+    try:
+        for arg in args:
+            os.startfile(str(arg))
+    except:
+        pass
 
 
 def get_instrument_bg_color(inst):
@@ -282,11 +295,10 @@ class FletApp:
 
     def _build_select_config(self):
         file_picker = ft.FilePicker(on_result=self._pick_config_file)
+        self._config_path = ft.Text(MISSING_CONFIG_TEXT)
         self.page.overlay.append(file_picker)
         btn = ft.ElevatedButton("Välj konfigurationsfil", on_click=lambda _: file_picker.pick_files(
             allow_multiple=False))
-
-        self._config_path = ft.Text(MISSING_CONFIG_TEXT)
 
         row = ft.Row()
         row.controls.append(btn)
@@ -414,6 +426,15 @@ class FletApp:
                 row.controls.append(btn)
                 self._instrument_items[instrument][key] = ft.Text(value or '')
                 row.controls.append(self._instrument_items[instrument][key])
+            elif key == 'target_directory':
+                if not (value and pathlib.Path(value).exists()):
+                    self._show_info(f'Felaktig {translate(key).lower()} för {instrument.upper()}. Se över din configfil.')
+                    return
+                row.controls.append(ft.Text(translate(key)))
+                row.controls.append(ft.Text(value))
+                # row.controls.append(ft.ElevatedButton('Öppna', on_click=lambda e, path=value: open_directory(path)))
+                row.controls.append(ft.IconButton(
+                    icon=ft.icons.OPEN_IN_BROWSER, on_click=lambda e, path=value: open_directory(path)))
             elif type(value) == bool:
                 cb = ft.Checkbox(label=key, value=value)
                 self._instrument_items[instrument][key] = cb
