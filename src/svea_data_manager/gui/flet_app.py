@@ -94,10 +94,13 @@ def load_default_config():
     if not DEFAULT_CONFIG_SAVE_PATH.exists():
         return None
     with open(DEFAULT_CONFIG_SAVE_PATH) as fid:
-        path = fid.readline().strip()
-        if not path:
+        path_str = fid.readline().strip()
+        if not path_str:
             return None
-        return pathlib.Path(path)
+        path =  pathlib.Path(path_str)
+        if not path.exists():
+            return None
+        return path
 
 
 def save_default_config(path):
