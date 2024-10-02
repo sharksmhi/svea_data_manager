@@ -148,6 +148,7 @@ class FletApp:
 
     def main(self, page):
         self.page = page
+        page.window_height = 1200
         self.page.title = 'Svea Data Manager: Making your data handling easier!'
         self._add_report_bottom_sheet()
         self._build()
@@ -340,7 +341,10 @@ class FletApp:
 
     def _pick_source_dir(self, inst):
         self._current_source_instrument = inst
-        self._pick_source.get_directory_path()
+        initial_directory = self._instrument_items[self._current_source_instrument]['source_directory'].value.strip()
+        if not (initial_directory and pathlib.Path(initial_directory).exists()):
+            initial_directory = None
+        self._pick_source.get_directory_path(initial_directory=initial_directory)
 
     def _pick_attr_dir(self, inst, attr):
         self._current_attr_instrument = inst
@@ -392,7 +396,7 @@ class FletApp:
         self._instrument_items[instrument] = {}
         padding = 10
         inst_col = ft.Column()
-        inst_col.controls.append(ft.Text(instrument.upper()))
+        inst_col.controls.append(ft.Text(instrument.upper(), weight=ft.FontWeight.W_700))
         for key, value in config.items():
             if key == 'attributes':
                 continue
