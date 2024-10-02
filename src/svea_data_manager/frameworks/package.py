@@ -26,6 +26,10 @@ class Package:
         return self._package_key
 
     @property
+    def package_key(self) -> str:
+        return self._package_key
+
+    @property
     def instrument(self):
         return self._instrument
 

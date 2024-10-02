@@ -80,7 +80,9 @@ TRANSLATE = {
     'ship': 'Fartyg',
     'cruise': 'Cruise',
     'comment': 'Kommentar',
-    'svn_commit_message': 'SVN commit-kommentar'
+    'svn_commit_message': 'SVN commit-kommentar',
+
+    'source_root_directory': 'Rotmapp för källfiler',
 }
 
 
@@ -92,10 +94,13 @@ def load_default_config():
     if not DEFAULT_CONFIG_SAVE_PATH.exists():
         return None
     with open(DEFAULT_CONFIG_SAVE_PATH) as fid:
-        path = fid.readline().strip()
-        if not path:
+        path_str = fid.readline().strip()
+        if not path_str:
             return None
-        return pathlib.Path(path)
+        path =  pathlib.Path(path_str)
+        if not path.exists():
+            return None
+        return path
 
 
 def save_default_config(path):
@@ -113,6 +118,8 @@ class FletApp:
         self._progress_texts = {}
         self._instrument_items = {}
         self._current_source_instrument = None
+        self._current_attr_instrument = None
+        self._current_attr = None
 
         self._toggle_buttons = []
 
@@ -153,6 +160,7 @@ class FletApp:
     def _close_banner(self, e=None):
         self.page.banner.open = False
         self.page.update()
+        self._enable_toggle_buttons()
 
     def _show_banner(self, e=None):
         self.page.banner.open = True
@@ -198,8 +206,10 @@ class FletApp:
 
         self._pick_source = ft.FilePicker(on_result=self._on_pick_source_dir)
         self._pick_source_root = ft.FilePicker(on_result=self._on_pick_source_root_dir)
+        self._pick_attr = ft.FilePicker(on_result=self._on_pick_attr)
         self.page.overlay.append(self._pick_source)
         self.page.overlay.append(self._pick_source_root)
+        self.page.overlay.append(self._pick_attr)
 
         self._build_select_config()
         self._build_select_root_source()
@@ -316,12 +326,25 @@ class FletApp:
         self._current_source_instrument = inst
         self._pick_source.get_directory_path()
 
+    def _pick_attr_dir(self, inst, attr):
+        self._current_attr_instrument = inst
+        self._current_attr = attr
+        self._pick_attr.get_directory_path()
+
     def _on_pick_source_dir(self, e: ft.FilePickerResultEvent):
         if not e.path:
             return
         self._instrument_items[self._current_source_instrument]['source_directory'].value = e.path
         self.update_page()
         self._current_source_instrument = None
+
+    def _on_pick_attr(self, e: ft.FilePickerResultEvent):
+        if not e.path:
+            return
+        self._attributes[self._current_attr_instrument][self._current_attr].value = e.path
+        self.update_page()
+        self._current_attr_instrument = None
+        self._current_attr = None
 
     def _load_config_file(self):
         self._config = {}
@@ -449,7 +472,17 @@ class FletApp:
                 msg = TOOLTIP_TEXT.cruise
             tt = get_tooltip_widget(msg)
 
-            tt.content = attr
+            row = ft.Row()
+            row.controls.append(attr)
+            if 'directory' in key:
+                btn = ft.ElevatedButton(
+                    f'Hämta {translate(key).lower()}',
+                    # icon=ft.icons.UPLOAD_FILE,
+                    on_click=lambda e, inst=instrument, atr=key: self._pick_attr_dir(inst, atr))
+                self._toggle_buttons.append(btn)
+                row.controls.append(btn)
+
+            tt.content = row
             attr_col.controls.append(tt)
 
             self._attributes[instrument][key] = attr

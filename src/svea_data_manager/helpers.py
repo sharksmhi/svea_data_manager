@@ -60,7 +60,6 @@ def create_zip_file(file_paths, output_path, rel_path):
 
 def check_path(path):
     path = Path(path)
-
     if path.is_absolute() or '..' in path.parts:
         msg = 'path must not be absolute or contain any traversal characters.'
         logger.error(msg)
