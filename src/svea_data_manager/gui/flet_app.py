@@ -550,34 +550,37 @@ class FletApp:
         self._archive_data()
 
     def _archive_data(self, inst=None):
-        self._disable_toggle_buttons()
-        self._close_banner()
-        self._update_config_items()
-        self._update_config_attributes()
-        config = self._config.copy()
-        if inst:
-            config = {inst: self._config[inst]}
-        config = {inst: config[inst] for inst in config if config[inst]['source_directory']}
-        logger.info(f'Running instruments: {",".join(list(config))}')
-        if not config:
-            self._show_info('Du har inte angivit källmapp för något instrument!')
-            return
-        self._progress_bars[inst.upper()].value = 0.1
-        self.update_page()
-        sdm = SveaDataManager.from_config(config)
-        print('Reading')
-        sdm.read_packages()
-        print('Transforming')
-        sdm.transform_packages()
-        print('Writing')
-        sdm.write_packages()
-        report_dir = self._write_report()
-        self._show_result_ok(report_dir)
+        try:
+            self._disable_toggle_buttons()
+            self._close_banner()
+            self._update_config_items()
+            self._update_config_attributes()
+            config = self._config.copy()
+            if inst:
+                config = {inst: self._config[inst]}
+            config = {inst: config[inst] for inst in config if config[inst]['source_directory']}
+            logger.info(f'Running instruments: {",".join(list(config))}')
+            if not config:
+                self._show_info('Du har inte angivit källmapp för något instrument!')
+                return
+            self._progress_bars[inst.upper()].value = 0.1
+            self.update_page()
+            sdm = SveaDataManager.from_config(config)
+            print('Reading')
+            sdm.read_packages()
+            print('Transforming')
+            sdm.transform_packages()
+            print('Writing')
+            sdm.write_packages()
+            report_dir = self._write_report()
+            self._show_result_ok(report_dir)
 
-        for ins in config:
-            self._progress_bars[ins.upper()].value = 0
-            self._progress_texts[ins.upper()].value = 'Allt klart!'
-        self.update_page()
+            for ins in config:
+                self._progress_bars[ins.upper()].value = 0
+                self._progress_texts[ins.upper()].value = 'Allt klart!'
+            self.update_page()
+        except Exception as e:
+            self._show_info(f'Något gick fel:\n{e}')
 
     def _disable_toggle_buttons(self):
         for btn in self._toggle_buttons:
