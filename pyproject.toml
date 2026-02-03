@@ -6,6 +6,7 @@ authors = [
     {name = "", email = "nodc@smhi.se"},
 ]
 dependencies = [
+    "click>=8.3.1",
     "pyyaml>=6.0.1",
     "scipy>=1.13.0",
 ]
@@ -17,6 +18,14 @@ license = {text = "MIT"}
 gui = [
     "flet>=0.22.1",
 ]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "ruff>=0.14.14",
+]
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
@@ -24,3 +33,28 @@ build-backend = "pdm.backend"
 
 [tool.pdm]
 distribution = true
+
+[project.scripts]
+sdm-cli = "svea_data_manager.cli.cli_app:cli"
+
+[tool.ruff]
+line-length = 90
+indent-width = 4
+target-version = "py311"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+    "A",   # flake8-builtins
+    "F",   # pyflakes
+    "E",   # pycodestyle: error
+    "W",   # pycodestyle: warning
+    "I",   # isort
+    "BLE", # flake8-blind-except (disallow broad/blanket except)
+    "RUF"  # Ruff-specific rules
+]

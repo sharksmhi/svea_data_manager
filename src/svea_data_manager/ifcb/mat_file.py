@@ -1,17 +1,17 @@
-import pathlib
-import os
 import logging
+import os
+import pathlib
+
 import scipy
 
 logger = logging
 
 
 class ClassifierMatFile:
-
     def __init__(self, file_path):
         self._path = pathlib.Path(file_path)
-        if not self._path.suffix == '.mat':
-            msg = f'{self._path} is not a mat-file'
+        if not self._path.suffix == ".mat":
+            msg = f"{self._path} is not a mat-file"
             logger.error(msg)
             raise Exception(msg)
         self._lat = None
@@ -33,7 +33,9 @@ class ClassifierMatFile:
 
     def _save_info(self):
         mat = scipy.io.loadmat(str(self.path), simplify_cells=True)
-        self._classifier_original_path = pathlib.Path(mat['classifierName'].split('.')[0] + '.mat')
+        self._classifier_original_path = pathlib.Path(
+            mat["classifierName"].split(".")[0] + ".mat"
+        )
 
 
 def load_individual_mat_files(self, directory):
@@ -42,9 +44,11 @@ def load_individual_mat_files(self, directory):
     for root, dirs, files in os.walk(directory, topdown=False):
         for name in files:
             path = pathlib.Path(root, name)
-            if path.suffix != '.mat':
+            if path.suffix != ".mat":
                 continue
-            if path.name[0] != 'D':
+            if path.name[0] != "D":
                 continue
             mat = scipy.io.loadmat(path, simplify_cells=True)
-            classifier_files[path.name.split('_')[0]] = pathlib.Path(mat['classifierName']).name
+            classifier_files[path.name.split("_")[0]] = pathlib.Path(
+                mat["classifierName"]
+            ).name

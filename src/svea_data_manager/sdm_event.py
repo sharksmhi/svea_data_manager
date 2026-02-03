@@ -39,4 +39,3 @@ def post_event(event: str, data=None):
     for prio in sorted(_sdm_subscribers[event]):
         for func in _sdm_subscribers[event][prio]:
             func(data)
-

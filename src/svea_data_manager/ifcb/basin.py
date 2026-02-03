@@ -1,10 +1,11 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from pathlib import Path
-from functools import cached_property
-import json
 
-from shapely.geometry import Point, shape
+import json
+from dataclasses import dataclass
+from functools import cached_property
+from pathlib import Path
+
+from shapely.geometry import shape
 
 
 @dataclass
@@ -15,10 +16,10 @@ class Basin:
 
     @classmethod
     def from_feature(cls, feature) -> Basin:
-        name = feature['properties']['name']
-        id = feature['properties']['id']
-        geometry = shape(feature['geometry'])
-        return cls(geometry=geometry, name=name, id=id)
+        name = feature["properties"]["name"]
+        basin_id = feature["properties"]["id"]
+        geometry = shape(feature["geometry"])
+        return cls(geometry=geometry, name=name, id=basin_id)
 
 
 class BasinIterator:
@@ -40,5 +41,5 @@ class BasinIterator:
 
     @cached_property
     def features(self) -> list[dict]:
-        with open(self._geojson_file, 'r') as infile:
-            return json.load(infile).get('features', [])
+        with open(self._geojson_file, "r") as infile:
+            return json.load(infile).get("features", [])

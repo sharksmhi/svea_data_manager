@@ -1,0 +1,123 @@
+from pathlib import Path
+
+import pytest
+
+from svea_data_manager.instruments.adcp import ADCPResourceProcessed, ADCPResourceRaw
+
+
+@pytest.mark.parametrize(
+    "given_file_stem, expected_match",
+    (
+        ("x", False),
+        ("very_random_file_name_refrigerator", False),
+        ("ADCP_12AB_2026_01_a_b", False),
+        ("ADCPa_12AB_2026_01_a_b", True),
+        ("ADCPb_12AB_2026_01_b", True),
+        ("ADCPc_SMHI_c_2026_b", True),
+        ("ADCPd_SMHI_c2026_b", True),
+    ),
+)
+def test_adcpresourceraw_accepted_filenames(tmp_path, given_file_stem, expected_match):
+    # Given a file stem and an allowed suffix
+    given_filename = Path(given_file_stem).with_suffix(".txt")
+
+    # When giving it to ADCPResourceRaw
+    resource = ADCPResourceRaw.from_source_file(tmp_path, given_filename)
+
+    # Then the filename is matched or not according to expectation
+    assert (resource is not None) == expected_match
+
+
+def test_adcpresourceraw_extracts_attributes_from_filename(tmp_path):
+    # Given a filename made up of specific components
+    given_instrument = "ADCPa"
+    given_ship = "12AB"
+    given_year = "2026"
+    given_cruise = "23"
+    given_counter = "01"
+    given_nr = "02"
+    given_suffix = ".txt"
+
+    given_filename = Path(
+        f"{given_instrument}_{given_ship}_"
+        f"{given_year}_{given_cruise}_{given_counter}_{given_nr}{given_suffix}"
+    )
+
+    # When giving it to ADCPResourceRaw
+    resource = ADCPResourceRaw.from_source_file(tmp_path, given_filename)
+
+    # Then all the components are available in resource attributes
+    assert set(resource.attributes.keys()) == {
+        "instrument",
+        "ship",
+        "year",
+        "cruise",
+        "counter",
+        "nr",
+        "suffix",
+    }
+
+    # And the values are intact
+    assert resource.attributes["instrument"] == given_instrument
+    assert resource.attributes["ship"] == given_ship
+    assert resource.attributes["year"] == given_year
+    assert resource.attributes["cruise"] == given_cruise
+    assert resource.attributes["counter"] == given_counter
+    assert resource.attributes["nr"] == given_nr
+
+
+@pytest.mark.parametrize(
+    "given_file_stem, expected_match",
+    (
+        ("x", False),
+        ("very_random_file_name_refrigerator", False),
+        ("ADCP_12AB_2026_01_processed", False),
+        ("ADCPa_12AB_2026_01_processed", True),
+        ("ADCP_12AB_2026_01_utdata", False),
+        ("ADCPb_12AB_2026_01_utdata", True),
+    ),
+)
+def test_adcpresourceprocessed_accepted_filenames(
+    tmp_path, given_file_stem, expected_match
+):
+    # Given a file stem and an allowed suffix
+    given_filename = Path(given_file_stem).with_suffix(".txt")
+
+    # When giving it to ADCPResourceProcessed
+    resource = ADCPResourceProcessed.from_source_file(tmp_path, given_filename)
+
+    # Then the filename is matched or not according to expectation
+    assert (resource is not None) == expected_match
+
+
+def test_adcpresourceprocessed_extracts_attributes_from_filename(tmp_path):
+    # Given a filename made up of specific components
+    given_instrument = "ADCPa"
+    given_ship = "12AB"
+    given_year = "2026"
+    given_cruise = "23"
+    given_suffix = ".anysuffix"
+
+    given_filename = Path(
+        f"{given_instrument}_{given_ship}_"
+        f"{given_year}_{given_cruise}_processed{given_suffix}"
+    )
+
+    # When giving it to ADCPResourceProcessed
+    resource = ADCPResourceProcessed.from_source_file(tmp_path, given_filename)
+
+    # Then all the components are available in resource attributes
+    assert set(resource.attributes.keys()) == {
+        "instrument",
+        "ship",
+        "year",
+        "cruise",
+        "suffix",
+    }
+
+    # And the values are intact
+    assert resource.attributes["instrument"] == given_instrument
+    assert resource.attributes["ship"] == given_ship
+    assert resource.attributes["year"] == given_year
+    assert resource.attributes["cruise"] == given_cruise
+    assert resource.attributes["suffix"] == given_suffix

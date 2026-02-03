@@ -1,63 +1,55 @@
-class ImproperlyConfiguredInstrument(Exception):
-    """The instrument is missing something in its configuration"""
+from svea_data_manager.exceptions import SveaDataManagerError
+
+
+class FrameworksError(SveaDataManagerError):
+    """Base class for exceptions in frameworks module."""
+
     pass
 
 
-class PackagesNotExtracted(Exception):
+class PackagesNotExtractedError(FrameworksError):
     """The instrument packages has not been extracted."""
+
     pass
 
 
-class PackageAlreadyInCollection(Exception):
+class PackageAlreadyInCollectionError(FrameworksError):
     """The package already exist in the package collection"""
+
     pass
 
 
-class PackageNotInCollection(Exception):
+class PackageNotInCollectionError(FrameworksError):
     """The package does not exist in the package collection"""
+
     pass
 
 
-class ResourceAlreadyInCollection(Exception):
+class ResourceAlreadyInCollectionError(FrameworksError):
     """The resource already exist in the resource collection"""
+
     pass
 
 
-class ResourceNotInCollection(Exception):
-    """The resource does not exist in the resource collection"""
-    pass
-
-
-class PackageKeyNotFoundForResource(Exception):
+class PackageKeyNotFoundForResourceError(FrameworksError):
     """No package key found for resource"""
+
     pass
 
 
-class ResourceAlreadyInStorage(Exception):
+class ResourceAlreadyInStorageError(FrameworksError):
     """The resource already exists in the storage"""
+
     pass
 
 
-class ForceNotAllowed(Exception):
+class ForceNotAllowedError(FrameworksError):
     """Not allowed to force"""
+
     pass
 
 
-class CruiseError(Exception):
-    """Not allowed to force"""
-    pass
+class UnknownPackageTypeError(FrameworksError):
+    """The package type is unknown"""
 
-
-class ShipError(Exception):
-    """Not allowed to force"""
-    pass
-
-
-class NoInstrumentInformation(Exception):
-    """Cannot find information about instrument"""
-    pass
-
-
-class TargetPathExists(Exception):
-    """The target path exists"""
     pass

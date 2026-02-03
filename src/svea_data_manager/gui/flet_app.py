@@ -1,12 +1,9 @@
-import datetime
 import logging
 import logging.handlers
 import os
 import pathlib
-import shutil
 import sys
 import traceback
-import subprocess
 
 import flet as ft
 import yaml
@@ -363,7 +360,7 @@ class FletApp:
     def _update_gui_from_config(self):
         self._toggle_buttons = []
         self._instrument_listview.controls = []
-        btn = ft.ElevatedButton(text=f'Arkivera data från alla instrument',
+        btn = ft.ElevatedButton(text='Arkivera data från alla instrument',
                                                   on_click=self._archive_all_data)
         self._toggle_buttons.append(btn)
         self._instrument_listview.controls.append(btn)
@@ -585,22 +582,22 @@ class FletApp:
         ok_color = 'black'
         bad_color = 'red'
         info_lst = []
-        info_lst.append((f'Antal filer som hanterats:', ok_color))
+        info_lst.append(('Antal filer som hanterats:', ok_color))
         info_lst.extend(nr_accepted_str)
         info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som inte hanterats', ok_color))
+        info_lst.append(('Antal filer som inte hanterats', ok_color))
         info_lst.extend(nr_rejected_str)
         info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som lagts till under prosessen:', ok_color))
+        info_lst.append(('Antal filer som lagts till under prosessen:', ok_color))
         info_lst.extend(nr_transformed_str)
         info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som förberetts för svn:', ok_color))
+        info_lst.append(('Antal filer som förberetts för svn:', ok_color))
         info_lst.extend(nr_svn_prepared)
         info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som kopierats:', ok_color))
+        info_lst.append(('Antal filer som kopierats:', ok_color))
         info_lst.extend(nr_copied_str)
         info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som inte kopierats:', ok_color))
+        info_lst.append(('Antal filer som inte kopierats:', ok_color))
         info_lst.extend(nr_not_copied_str)
         info_lst.append(('', ok_color))
         info_lst.append((f'Se fullständig rapport under: {report_dir}', ok_color))
@@ -684,7 +681,6 @@ class FletApp:
     def _open_report_directory(self, report_dir):
         print(f'{report_dir=}')
         # subprocess.Popen(f'explorer /select,"{report_dir}"')
-        import os
         os.system(f'start {report_dir}')
 
     def _callback_on_progress(self, data):
