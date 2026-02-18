@@ -3,17 +3,17 @@ import re
 from pathlib import Path
 from typing import Self
 
+from svea_data_manager.frameworks import exceptions
 from svea_data_manager.frameworks.instrument import Instrument
 from svea_data_manager.frameworks.resource import Resource
 from svea_data_manager.frameworks.storage import FileStorage, SubversionStorage
-from svea_data_manager.instruments import exceptions
 
 logger = logging.getLogger(__name__)
 
 SHIPS = {"77_10": "77SE"}
 
 
-class CTD(Instrument):
+class Ctd(Instrument):
     name = "CTD"
     desc = "Conductivity, temperature and depth monitoring from Svea"
 
@@ -25,13 +25,13 @@ class CTD(Instrument):
         elif "target_directory" in self._config:
             self._storage = FileStorage(self._config["target_directory"])
         else:
-            raise exceptions.InstrumentConfigurationError(
+            raise exceptions.ConfigurationError(
                 "Missing required configuration. Either 'subversion_repo_url' or "
                 "'target_directory' must be set."
             )
 
     def prepare_resource(self, source_file: Path):
-        return CTDResource.from_source_file(self.source_directory, source_file)
+        return CtdResource.from_source_file(self.source_directory, source_file)
 
     def get_package_key_for_resource(self, resource):
         return resource.package_key
@@ -41,7 +41,7 @@ class CTD(Instrument):
         return self._storage.write(package, self._config.get("force", False))
 
 
-class CTDResource(Resource):
+class CtdResource(Resource):
     RAW_FILE_SUFFIXES = (
         ".bl",
         ".btl",
@@ -118,7 +118,7 @@ class CTDResource(Resource):
                     path = path / "cnv" / "downcast"
             else:
                 path = path / "cnv"
-        elif self.source_path.suffix.lower() in CTDResource.RAW_FILE_SUFFIXES:
+        elif self.source_path.suffix.lower() in CtdResource.RAW_FILE_SUFFIXES:
             path = path / "raw"
         elif self.source_path.suffix == ".txt":
             pass
@@ -130,12 +130,12 @@ class CTDResource(Resource):
     @classmethod
     def from_source_file(cls, root_directory: Path, source_file: Path) -> Self | None:
         if source_file.suffix.lower() not in (
-            *CTDResource.RAW_FILE_SUFFIXES,
+            *CtdResource.RAW_FILE_SUFFIXES,
             ".cnv",
             ".txt",
         ):
             return None
-        for PATTERN in CTDResource.PATTERNS:
+        for PATTERN in CtdResource.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
 
             if name_match:

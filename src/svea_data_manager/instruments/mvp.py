@@ -2,38 +2,38 @@ import logging
 import pathlib
 import re
 
+from svea_data_manager.frameworks import exceptions
 from svea_data_manager.frameworks.instrument import Instrument
 from svea_data_manager.frameworks.resource import Resource
 from svea_data_manager.frameworks.storage import SubversionStorage
-from svea_data_manager.instruments import exceptions
 
 logger = logging.getLogger(__name__)
 
 
-class MVP(Instrument):
+class Mvp(Instrument):
     name = "MVP"
     desc = "MVP monitoring from Svea"
 
     def __init__(self, config):
         super().__init__(config)
         if "subversion_repo_url" not in self._config:
-            raise exceptions.InstrumentConfigurationError(
+            raise exceptions.ConfigurationError(
                 "Missing required configuration subversion_repo_url."
             )
         self._storage = SubversionStorage(self._config["subversion_repo_url"])
 
     def prepare_resource(self, source_file):
-        return MVPResource.from_source_file(self.source_directory, source_file)
+        return MvpResource.from_source_file(self.source_directory, source_file)
 
     def get_package_key_for_resource(self, resource):
         return resource.package_key
 
     def write_package(self, package):
-        logger.info("Writing package %s to subversion repo" % package)
+        logger.info(f"Writing package {package} to storage {self._storage}.")
         return self._storage.write(package, self._config.get("force", False))
 
 
-class MVPResource(Resource):
+class MvpResource(Resource):
     PREFIX_OPTIONAL = r"(?P<prefix>.{1})?"
     INSTRUMENT = r"(?P<instrument>MVP)"
     YEAR = r"(?P<year>\d{4})"
@@ -129,7 +129,7 @@ class MVPResource(Resource):
             return None
         if "SMHI_" not in path_str:
             return None
-        for PATTERN in MVPResource.PATTERNS:
+        for PATTERN in MvpResource.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
             if name_match:
                 attributes = name_match.groupdict()
@@ -137,5 +137,5 @@ class MVPResource(Resource):
                     attributes["transect"] = source_file.parent.name
                 attributes["transect"] = attributes["transect"].upper()
                 attributes["suffix"] = source_file.suffix
-                resource = MVPResource(root_directory, source_file, attributes)
+                resource = MvpResource(root_directory, source_file, attributes)
                 return resource

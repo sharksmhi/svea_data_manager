@@ -9,7 +9,7 @@ from svea_data_manager.sdm_event import subscribe
 logger = logging.getLogger(__name__)
 
 
-class SDMLogger:
+class SdmLogger:
     def __init__(
         self,
         file_copied_callback=None,

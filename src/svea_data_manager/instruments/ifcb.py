@@ -4,12 +4,12 @@ import pathlib
 import re
 
 from svea_data_manager import helpers
+from svea_data_manager.frameworks import exceptions
 from svea_data_manager.frameworks.instrument import Instrument
 from svea_data_manager.frameworks.resource import Resource
 from svea_data_manager.frameworks.storage import FileStorage
 from svea_data_manager.ifcb.hdr_file import HdrFile
-from svea_data_manager.ifcb.metadata import MetadataIFCB
-from svea_data_manager.instruments import exceptions
+from svea_data_manager.ifcb.metadata import MetadataIfcb
 from svea_data_manager.sdm_event import post_event
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ PROCESS_MULTIBLOB = r"(?P<process_type>multiblob)"
 VERSION = r"(?P<version>.*)"
 
 
-class IFCB(Instrument):
+class Ifcb(Instrument):
     name = "IFCB"
     desc = "Imaging FlowCytobot (IFCB)"
 
@@ -37,15 +37,15 @@ class IFCB(Instrument):
         if "target_directory" not in self._config:
             msg = "Missing required configuration target_directory."
             logger.error(msg)
-            raise exceptions.InstrumentConfigurationError(msg)
+            raise exceptions.ConfigurationError(msg)
         self._storage = FileStorage(self._config["target_directory"])
 
     def prepare_resource(self, source_file: pathlib.Path):
         for cls in [
-            IFCBResourceRaw,
-            IFCBResourceBlobs,
-            IFCBResourceFeatures,
-            IFCBResourceMultiBlob,
+            IfcbResourceRaw,
+            IfcbResourceBlobs,
+            IfcbResourceFeatures,
+            IfcbResourceMultiBlob,
         ]:
             source_directory = self.source_directory
             if helpers.get_temp_directory() in source_file.parents:
@@ -68,13 +68,13 @@ class IFCB(Instrument):
         hdr_resource = None
         for resource in package.resources:
             if resource.source_path.suffix == ".txt":
-                metadata_file = MetadataIFCB.from_file(resource.absolute_source_path)
+                metadata_file = MetadataIfcb.from_file(resource.absolute_source_path)
             elif resource.source_path.suffix == ".hdr":
                 hdr_resource = resource
         if not hdr_resource:
             return
         if not metadata_file:
-            metadata_file = MetadataIFCB(id=hdr_resource.absolute_source_path.stem)
+            metadata_file = MetadataIfcb(id=hdr_resource.absolute_source_path.stem)
 
         # Get metadata from hdr file
         meta = HdrFile(hdr_resource.absolute_source_path).metadata
@@ -86,7 +86,7 @@ class IFCB(Instrument):
         meta.update(ext_meta)
         metadata_file.add(**meta)
         name = hdr_resource.absolute_source_path.stem + ".txt"
-        reso = IFCBResourceRaw.from_string_content(
+        reso = IfcbResourceRaw.from_string_content(
             metadata_file.get_string_content(),
             file_name=name,
             attributes=hdr_resource.attributes,
@@ -115,7 +115,7 @@ class IFCB(Instrument):
         )
 
 
-class IFCBResource(Resource):
+class IfcbResource(Resource):
     @property
     def date_str(self):
         return self.attributes["year"] + self.attributes["month"] + self.attributes["day"]
@@ -145,7 +145,7 @@ class IFCBResource(Resource):
             return "config"
 
 
-class IFCBResourceRaw(IFCBResource):
+class IfcbResourceRaw(IfcbResource):
     RAW_FILE_SUFFIXES = (".adc", ".hdr", ".roi")
 
     PATTERNS = (
@@ -174,16 +174,16 @@ class IFCBResourceRaw(IFCBResource):
 
     @staticmethod
     def from_source_file(root_directory, source_file):
-        if source_file.suffix.lower() not in IFCBResourceRaw.RAW_FILE_SUFFIXES:
+        if source_file.suffix.lower() not in IfcbResourceRaw.RAW_FILE_SUFFIXES:
             return
-        for PATTERN in IFCBResourceRaw.PATTERNS:
+        for PATTERN in IfcbResourceRaw.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
             if name_match:
                 attributes = name_match.groupdict()
-                return IFCBResourceRaw(root_directory, source_file, attributes)
+                return IfcbResourceRaw(root_directory, source_file, attributes)
 
 
-class IFCBResourceBlobs(IFCBResource):
+class IfcbResourceBlobs(IfcbResource):
     PATTERNS = (
         re.compile(
             rf"^D{YEAR}{MONTH}{DAY}"
@@ -210,14 +210,14 @@ class IFCBResourceBlobs(IFCBResource):
 
     @staticmethod
     def from_source_file(root_directory, source_file):
-        for PATTERN in IFCBResourceBlobs.PATTERNS:
+        for PATTERN in IfcbResourceBlobs.PATTERNS:
             name_match = PATTERN.search(source_file.name)
             if name_match:
                 attributes = name_match.groupdict()
-                return IFCBResourceBlobs(root_directory, source_file, attributes)
+                return IfcbResourceBlobs(root_directory, source_file, attributes)
 
 
-class IFCBResourceFeatures(IFCBResource):
+class IfcbResourceFeatures(IfcbResource):
     PATTERNS = (
         re.compile(
             rf"^D{YEAR}{MONTH}{DAY}"
@@ -241,14 +241,14 @@ class IFCBResourceFeatures(IFCBResource):
 
     @staticmethod
     def from_source_file(root_directory, source_file):
-        for PATTERN in IFCBResourceFeatures.PATTERNS:
+        for PATTERN in IfcbResourceFeatures.PATTERNS:
             name_match = PATTERN.search(source_file.name)
             if name_match:
                 attributes = name_match.groupdict()
-                return IFCBResourceFeatures(root_directory, source_file, attributes)
+                return IfcbResourceFeatures(root_directory, source_file, attributes)
 
 
-class IFCBResourceMultiBlob(IFCBResource):
+class IfcbResourceMultiBlob(IfcbResource):
     PATTERNS = (
         re.compile(
             rf"^D{YEAR}{MONTH}{DAY}"
@@ -270,8 +270,8 @@ class IFCBResourceMultiBlob(IFCBResource):
 
     @staticmethod
     def from_source_file(root_directory, source_file):
-        for PATTERN in IFCBResourceMultiBlob.PATTERNS:
+        for PATTERN in IfcbResourceMultiBlob.PATTERNS:
             name_match = PATTERN.search(source_file.name)
             if name_match:
                 attributes = name_match.groupdict()
-                return IFCBResourceMultiBlob(root_directory, source_file, attributes)
+                return IfcbResourceMultiBlob(root_directory, source_file, attributes)

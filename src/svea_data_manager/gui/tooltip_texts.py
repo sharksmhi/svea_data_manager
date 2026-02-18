@@ -1,38 +1,38 @@
 import math
+
 import flet as ft
 
 
 class TooltipTexts:
-
     @property
     def config_file(self):
-        return 'No info'
+        return "No info"
 
     @property
     def root_directory(self):
-        return 'No info'
+        return "No info"
 
     def source_directory(self, path):
-        return f'Path is {path}'
+        return f"Path is {path}"
 
     def archive_instrument(self, path):
-        return f'Path is {path}'
+        return f"Path is {path}"
 
     @property
     def default_attribute(self):
-        return 'No info'
+        return "No info"
 
     @property
     def ship(self):
-        return 'No info'
+        return "No info"
 
     @property
     def cruise(self):
-        return 'No info'
+        return "No info"
 
     @property
     def config_file(self):
-        return 'No info'
+        return "No info"
 
 
 def get_tooltip_widget(msg):

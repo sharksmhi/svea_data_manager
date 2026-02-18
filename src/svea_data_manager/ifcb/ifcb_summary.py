@@ -25,7 +25,7 @@ COUNT_PAR = "classcount"
 BIOVOL_PAR = "classbiovol"
 
 
-class IFCBSummaryFile:
+class IfcbSummaryFile:
     def __init__(self):
         self._mat_summary_path = None
         self._mat_summary_data = None
@@ -235,7 +235,7 @@ def create_summary_file(
 ):
     assert mat_summary_file_path, "You have to provide a mat_summary_file_path"
 
-    s = IFCBSummaryFile()
+    s = IfcbSummaryFile()
     s.load_mat_summary_file(mat_summary_file_path)
 
     if hdr_root_directory and pathlib.Path(hdr_root_directory).exists():

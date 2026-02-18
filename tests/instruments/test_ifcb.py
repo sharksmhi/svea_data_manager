@@ -4,10 +4,10 @@ from pathlib import Path
 import pytest
 
 from svea_data_manager.instruments.ifcb import (
-    IFCBResourceBlobs,
-    IFCBResourceFeatures,
-    IFCBResourceMultiBlob,
-    IFCBResourceRaw,
+    IfcbResourceBlobs,
+    IfcbResourceFeatures,
+    IfcbResourceMultiBlob,
+    IfcbResourceRaw,
 )
 
 
@@ -24,7 +24,7 @@ def test_ifcbresourceraw_can_identify_date_and_datetime(
 ):
     # Given a filename
     # When giving it to IFCBResourceRaw
-    resource = IFCBResourceRaw.from_source_file(tmp_path, Path(given_filename))
+    resource = IfcbResourceRaw.from_source_file(tmp_path, Path(given_filename))
 
     # Then the expected date is extracted from the filename
     assert resource.date == expected_datetime.date()
@@ -53,7 +53,7 @@ def test_ifcbresourceraw_accepted_suffixes(
     given_filename = Path("D20260213T113415_IFCB").with_suffix(given_suffix)
 
     # When giving it to IFCBResourceRaw
-    resource = IFCBResourceRaw.from_source_file(tmp_path, given_filename)
+    resource = IfcbResourceRaw.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -75,7 +75,7 @@ def test_ifcbresourceraw_accepted_filenames(
     given_filename = Path(given_file_stem).with_suffix(".hdr")
 
     # When giving it to IFCBResourceRaw
-    resource = IFCBResourceRaw.from_source_file(tmp_path, given_filename)
+    resource = IfcbResourceRaw.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -99,7 +99,7 @@ def test_ifcbresourceblobs_accepted_filenames(
     given_filename = Path(given_file_stem).with_suffix(".zip")
 
     # When giving it to IFCBResourceBlobs
-    resource = IFCBResourceBlobs.from_source_file(tmp_path, given_filename)
+    resource = IfcbResourceBlobs.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -118,7 +118,7 @@ def test_ifcbresourceblobs_can_identify_date_and_datetime(
 ):
     # Given a filename
     # When giving it to IFCBResourceBlobs
-    resource = IFCBResourceBlobs.from_source_file(tmp_path, Path(given_filename))
+    resource = IfcbResourceBlobs.from_source_file(tmp_path, Path(given_filename))
 
     # Then the expected date is extracted from the filename
     assert resource.date == expected_datetime.date()
@@ -145,7 +145,7 @@ def test_ifcbresourcefeatures_accepted_filenames(
     given_filename = Path(given_file_stem).with_suffix(".csv")
 
     # When giving it to IFCBResourceFeatures
-    resource = IFCBResourceFeatures.from_source_file(tmp_path, given_filename)
+    resource = IfcbResourceFeatures.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -164,7 +164,7 @@ def test_ifcbresourcefeatures_can_identify_date_and_datetime(
 ):
     # Given a filename
     # When giving it to IFCBResourceFeatures
-    resource = IFCBResourceFeatures.from_source_file(tmp_path, Path(given_filename))
+    resource = IfcbResourceFeatures.from_source_file(tmp_path, Path(given_filename))
 
     # Then the expected date is extracted from the filename
     assert resource.date == expected_datetime.date()
@@ -191,7 +191,7 @@ def test_ifcbresourcemultiblob_accepted_filenames(
     given_filename = Path(given_file_stem).with_suffix(".csv")
 
     # When giving it to IFCBResourceMultiBlob
-    resource = IFCBResourceMultiBlob.from_source_file(tmp_path, given_filename)
+    resource = IfcbResourceMultiBlob.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -210,7 +210,7 @@ def test_ifcbresourcemultiblob_can_identify_date_and_datetime(
 ):
     # Given a filename
     # When giving it to IFCBResourceMultiBlob
-    resource = IFCBResourceMultiBlob.from_source_file(tmp_path, Path(given_filename))
+    resource = IfcbResourceMultiBlob.from_source_file(tmp_path, Path(given_filename))
 
     # Then the expected date is extracted from the filename
     assert resource.date == expected_datetime.date()

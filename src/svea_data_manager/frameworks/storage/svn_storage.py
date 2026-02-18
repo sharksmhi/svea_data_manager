@@ -1,154 +1,15 @@
-import logging
 import os
 import pathlib
 import shutil
 import subprocess
-import xml.etree.ElementTree as ET
-from abc import ABC, abstractmethod
+from xml.etree import ElementTree as ET
 
 from svea_data_manager.frameworks import exceptions
-from svea_data_manager.frameworks.package import Package
+from svea_data_manager.frameworks.storage.base_storage import BaseStorage, logger
 from svea_data_manager.sdm_event import post_event
 
-logger = logging.getLogger(__name__)
 
-
-class Storage(ABC):
-    def write(self, package, force=False):
-        if not isinstance(package, Package):
-            raise TypeError(
-                "package must be an instance of Package, not {}".format(type(package))
-            )
-        return self._write(package, force=force)
-
-    def delete(self, package):
-        if not isinstance(package, Package):
-            raise TypeError(
-                "package must be an instance of Package, not {}".format(type(package))
-            )
-        return self._delete(package)
-
-    @abstractmethod
-    def _write(self, package, **kwargs):
-        pass
-
-    @abstractmethod
-    def _delete(self, package):
-        pass
-
-    ResourceAlreadyInStorage = exceptions.ResourceAlreadyInStorageError
-
-
-class FileStorage(Storage):
-    def __init__(self, root_directory):
-        root_directory = pathlib.Path(root_directory).resolve()
-        if not root_directory.is_dir():
-            msg = (
-                f"root_directory must be an existing, writeable directory: "
-                f"{root_directory}"
-            )
-            logger.error(msg)
-            raise ValueError(msg)
-        self._root_directory = root_directory
-
-    def _write(self, package, force=False):
-        if force:
-            msg = "Not allowed to force writing to File Storage"
-            logger.error(msg)
-            raise exceptions.ForceNotAllowedError(msg)
-        # list with tuples of (source_path, target_path, instrument, key).
-        files_to_copy = []
-
-        # first iteration: extract files to copy and check for existence.
-        for resource in package.resources:
-            instrument = package.instrument
-            key = str(package)
-            absolute_source_path = resource.absolute_source_path
-            if resource.target_path is None:
-                msg = (
-                    f"Will not write file. "
-                    f"No target path given for file: {resource.absolute_source_path}"
-                )
-                logger.info(msg)
-                post_event(
-                    "on_target_path_not_given",
-                    dict(instrument=instrument, path=resource.absolute_source_path),
-                )
-                continue
-            absolute_target_path = self._resolve_path(resource.target_path)
-
-            if not force and absolute_target_path.exists():
-                msg = (
-                    f"Will not write file. "
-                    f"Resource with target path {absolute_target_path} already exists."
-                )
-                logger.warning(msg)
-                post_event(
-                    "on_target_path_exists",
-                    dict(instrument=instrument, path=absolute_target_path),
-                )
-                continue
-
-            files_to_copy.append(
-                (absolute_source_path, absolute_target_path, instrument, key)
-            )
-
-        # second iteration: write extracted files to target.
-        copied_files = []
-        nr_files_to_copy = len(files_to_copy)
-        for nr, (source_path, target_path, inst, key) in enumerate(files_to_copy):
-            os.makedirs(target_path.parent, exist_ok=True)
-            copied_file = shutil.copyfile(source_path, target_path)
-            copied_files.append(copied_file)
-            post_event(
-                "on_progress",
-                dict(
-                    instrument=inst,
-                    msg=f"Copying files from package {key} to file storage...",
-                    percentage=int((nr + 1) / nr_files_to_copy * 100),
-                ),
-            )
-            post_event(
-                "on_file_copied",
-                dict(
-                    instrument=inst,
-                    msg="Copying files to file storage...",
-                    source_path=source_path,
-                    target_path=target_path,
-                    nr_files_total=nr_files_to_copy,
-                    nr_files_copied=nr + 1,
-                ),
-            )
-
-        return copied_files
-
-    def _delete(self, package):
-        # TODO: Clean up left-overs: empty parent directories.
-        removed_files = []
-        for resource in package.resources:
-            absolute_target_path = self._resolve_path(resource.target_path)
-
-            if absolute_target_path.is_file():
-                os.remove(absolute_target_path)
-                removed_files.append(absolute_target_path)
-
-        return removed_files
-
-    def _resolve_path(self, path):
-        return self._root_directory.joinpath(path)
-
-
-class SubversionStorage(Storage):
-    class MissingExecutable(Exception):
-        """An required external program could not be found on the system"""
-
-        pass
-
-    class SubversionError(Exception):
-        """An error occurred when executing the Subversion binary"""
-
-        pass
-
+class SubversionStorage(BaseStorage):
     def __init__(self, root_url, username=None, password=None):
         self._root_url = root_url
         self._username = username
@@ -158,7 +19,7 @@ class SubversionStorage(Storage):
         svnmucc_exec = shutil.which("svnmucc")
 
         if svn_exec is None or svnmucc_exec is None:
-            raise SubversionStorage.MissingExecutable(
+            raise exceptions.MissingSubversionExecutableError(
                 "The svn executable could not be found. "
                 "Make sure it is installed and in your PATH."
             )
@@ -166,7 +27,10 @@ class SubversionStorage(Storage):
         self._svn_exec = svn_exec
         self._svnmucc_exec = svnmucc_exec
 
-    def _write(self, package, force=False):
+    def __str__(self):
+        return f"{self.__class__.__name__}({self._root_url})"
+
+    def _write(self, package, force=False) -> list[pathlib.PurePosixPath]:
         # list of files and dirs already in version control.
         existing_paths = self._get_versioned_paths()
 
@@ -190,20 +54,20 @@ class SubversionStorage(Storage):
                 logger.info(msg)
                 post_event(
                     "on_target_path_not_given",
-                    dict(instrument=instrument, path=resource.absolute_source_path),
+                    {"instrument": instrument, "path": resource.absolute_source_path},
                 )
                 continue
             relative_target_path = pathlib.PurePosixPath(resource.target_path)
 
             post_event(
                 "on_progress",
-                dict(
-                    instrument=package.instrument,
-                    msg="Checking file existence in SVN",
-                    percentage=int((nr + 1) / nr_files * 100),
-                    nr_files_total=nr_files,
-                    nr_files_copied=nr,
-                ),
+                {
+                    "instrument": package.instrument,
+                    "msg": "Checking file existence in SVN",
+                    "percentage": int((nr + 1) / nr_files * 100),
+                    "nr_files_total": nr_files,
+                    "nr_files_copied": nr,
+                },
             )
 
             if not force and relative_target_path in existing_paths:
@@ -214,7 +78,7 @@ class SubversionStorage(Storage):
                 logger.warning(msg)
                 post_event(
                     "on_target_path_exists",
-                    dict(instrument=instrument, path=relative_target_path),
+                    {"instrument": instrument, "path": relative_target_path},
                 )
                 continue
                 # raise exceptions.ResourceAlreadyInStorage(
@@ -245,26 +109,26 @@ class SubversionStorage(Storage):
             commited_additions.append(target_path)
             post_event(
                 "on_svn_storage_prepared",
-                dict(
-                    instrument=package.instrument,
-                    source_path=source_path,
-                    target_path=target_path,
-                    nr_files_total=nr_files,
-                    nr_files_copied=nr,
-                ),
+                {
+                    "instrument": package.instrument,
+                    "source_path": source_path,
+                    "target_path": target_path,
+                    "nr_files_total": nr_files,
+                    "nr_files_copied": nr,
+                },
             )
 
         if not multi_command:
             logger.info("No files prepared for svn storage")
-            return
+            return []
 
         post_event(
             "on_progress",
-            dict(
-                instrument=package.instrument,
-                msg="Starting commit to SVN",
-                percentage=20,
-            ),
+            {
+                "instrument": package.instrument,
+                "msg": "Starting commit to SVN",
+                "percentage": 20,
+            },
         )
 
         # run multi-command: commit
@@ -276,11 +140,11 @@ class SubversionStorage(Storage):
 
         post_event(
             "on_progress",
-            dict(
-                instrument=package.instrument,
-                msg=f"Commit to SVN finished with comment: {commit_message}",
-                percentage=100,
-            ),
+            {
+                "instrument": package.instrument,
+                "msg": f"Commit to SVN finished with comment: {commit_message}",
+                "percentage": 100,
+            },
         )
 
         return commited_additions
@@ -297,6 +161,10 @@ class SubversionStorage(Storage):
                 # target exists in repo, schedule removal.
                 multi_command = [*multi_command, "rm", str(relative_target_path)]
                 commited_removals.append(relative_target_path)
+
+        if not multi_command:
+            logger.info("No files prepared for svn storage")
+            return []
 
         # run multi-command: commit
         commit_message = f"Remove files for package: {package}"
@@ -329,7 +197,7 @@ class SubversionStorage(Storage):
         )
 
         if completed_process.returncode != 0:
-            raise SubversionStorage.SubversionError(
+            raise exceptions.SubversionError(
                 f"Command {cmd} failed "
                 f"(exited with code {completed_process.returncode}): \n"
                 f"{completed_process.stderr.strip()}"

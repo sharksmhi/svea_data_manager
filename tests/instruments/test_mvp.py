@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from svea_data_manager.instruments.mvp import MVPResource
+from svea_data_manager.instruments.mvp import MvpResource
 
 
 @pytest.mark.parametrize(
@@ -29,7 +29,7 @@ def test_mvpresource_accepted_filenames(
     given_filename = Path(given_file_stem).with_suffix(".jpg")
 
     # When giving it to MVPResource
-    resource = MVPResource.from_source_file(given_directory_path, given_filename)
+    resource = MvpResource.from_source_file(given_directory_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -56,7 +56,7 @@ def test_mvpresource_validates_directory_names(
     given_filename = Path("MVP_2026-02-13_155010_ABC-123")
 
     # When giving it to MVPResource
-    resource = MVPResource.from_source_file(given_directory_path, given_filename)
+    resource = MvpResource.from_source_file(given_directory_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -85,7 +85,7 @@ def test_mvpresource_extracts_attributes_from_filename(wordless_tmp_path):
     given_directory_path = wordless_tmp_path / "smhi_"
 
     # When giving it to MVPResource
-    resource = MVPResource.from_source_file(given_directory_path, given_filename)
+    resource = MvpResource.from_source_file(given_directory_path, given_filename)
 
     # Then all the components are available in resource attributes
     assert set(resource.attributes.keys()) == {

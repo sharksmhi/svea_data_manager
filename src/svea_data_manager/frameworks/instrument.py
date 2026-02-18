@@ -5,7 +5,6 @@ from pathlib import Path
 from svea_data_manager.frameworks import exceptions
 from svea_data_manager.frameworks.package import Package, PackageCollection
 from svea_data_manager.frameworks.resource import Resource
-from svea_data_manager.instruments.exceptions import InstrumentConfigurationError
 from svea_data_manager.sdm_event import post_event
 
 logger = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ class Instrument:
         if "source_directory" not in config:
             msg = "Missing required configuration source_directory."
             logger.error(msg)
-            raise InstrumentConfigurationError(msg)
+            raise exceptions.ConfigurationError(msg)
 
         self._config = config
         self._packages = None
@@ -100,8 +99,8 @@ class Instrument:
         resource = self.prepare_resource(source_file)
 
         if not isinstance(resource, Resource):
-            logger.info(
-                "Don't know how to handle source file: %s. Skipping file." % source_file
+            logger.debug(
+                f"Skipping file. Don't know how to handle source file '{source_file}'."
             )
             post_event(
                 "on_resource_rejected",
@@ -118,7 +117,7 @@ class Instrument:
         except PackageCollection.NotInCollection:
             package = self.prepare_package(package_key)
             self.packages.add(package)
-            logger.info(f"New package for added to PackageCollection: {package}")
+            logger.info(f"New package added to PackageCollection '{package}'.")
 
         package.resources.add(resource)
         post_event(
@@ -156,7 +155,7 @@ class Instrument:
     def prepare_resource(self, source_file):
         return Resource(self.source_directory, source_file)
 
-    def prepare_package(self, package_key):
+    def prepare_package(self, package_key: str):
         return Package(package_key, instrument=self.name)
 
     def transform_package(self, package, **kwargs):

@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class Package:
-    def __init__(self, package_key, instrument=None):
+    def __init__(self, package_key: str, instrument: str | None = None):
         if type(package_key) is not str:
             msg = "package_key must be of type string, not {}.".format(type(package_key))
             logger.error(msg)

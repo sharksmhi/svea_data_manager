@@ -5,12 +5,6 @@ class InstrumentError(SveaDataManagerError):
     pass
 
 
-class InstrumentConfigurationError(InstrumentError):
-    """The instrument is missing something in its configuration"""
-
-    pass
-
-
 class CruiseError(InstrumentError):
     pass
 

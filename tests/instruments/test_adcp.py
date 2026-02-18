@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from svea_data_manager.instruments.adcp import ADCPResourceProcessed, ADCPResourceRaw
+from svea_data_manager.instruments.adcp import AdcpResourceProcessed, AdcpResourceRaw
 
 
 @pytest.mark.parametrize(
@@ -22,7 +22,7 @@ def test_adcpresourceraw_accepted_filenames(tmp_path, given_file_stem, expected_
     given_filename = Path(given_file_stem).with_suffix(".txt")
 
     # When giving it to ADCPResourceRaw
-    resource = ADCPResourceRaw.from_source_file(tmp_path, given_filename)
+    resource = AdcpResourceRaw.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -44,7 +44,7 @@ def test_adcpresourceraw_extracts_attributes_from_filename(tmp_path):
     )
 
     # When giving it to ADCPResourceRaw
-    resource = ADCPResourceRaw.from_source_file(tmp_path, given_filename)
+    resource = AdcpResourceRaw.from_source_file(tmp_path, given_filename)
 
     # Then all the components are available in resource attributes
     assert set(resource.attributes.keys()) == {
@@ -84,7 +84,7 @@ def test_adcpresourceprocessed_accepted_filenames(
     given_filename = Path(given_file_stem).with_suffix(".txt")
 
     # When giving it to ADCPResourceProcessed
-    resource = ADCPResourceProcessed.from_source_file(tmp_path, given_filename)
+    resource = AdcpResourceProcessed.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -104,7 +104,7 @@ def test_adcpresourceprocessed_extracts_attributes_from_filename(tmp_path):
     )
 
     # When giving it to ADCPResourceProcessed
-    resource = ADCPResourceProcessed.from_source_file(tmp_path, given_filename)
+    resource = AdcpResourceProcessed.from_source_file(tmp_path, given_filename)
 
     # Then all the components are available in resource attributes
     assert set(resource.attributes.keys()) == {

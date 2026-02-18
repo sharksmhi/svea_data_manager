@@ -16,7 +16,7 @@ class Resource:
         self._source_path = path
         self._target_path = path
 
-        if type(attributes) is not dict:
+        if not isinstance(attributes, dict):
             msg = f"attributes must be dict, not {type(attributes)}."
             logger.error(msg)
             raise TypeError(msg)
@@ -100,7 +100,7 @@ class ResourceCollection:
     def __len__(self):
         return len(self._resources)
 
-    def add(self, resource):
+    def add(self, resource: Resource):
         if not isinstance(resource, Resource):
             msg = (
                 f"Only instances of Resource can be added to this collection, "

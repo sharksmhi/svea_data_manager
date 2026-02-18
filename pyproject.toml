@@ -58,3 +58,6 @@ select = [
     "BLE", # flake8-blind-except (disallow broad/blanket except)
     "RUF"  # Ruff-specific rules
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__ files

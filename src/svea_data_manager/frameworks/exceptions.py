@@ -53,3 +53,31 @@ class UnknownPackageTypeError(FrameworksError):
     """The package type is unknown"""
 
     pass
+
+
+class ConfigurationError(FrameworksError):
+    """Something is missing in the configuration"""
+
+    pass
+
+
+class StorageError(FrameworksError):
+    pass
+
+
+class StorageRootDirectoryDoesNotExistError(StorageError):
+    """The storage root directory does not exist"""
+
+    pass
+
+
+class MissingSubversionExecutableError(StorageError):
+    """Missing Subversion executable needed for storage"""
+
+    pass
+
+
+class SubversionError(StorageError):
+    """A Subversion related error"""
+
+    pass

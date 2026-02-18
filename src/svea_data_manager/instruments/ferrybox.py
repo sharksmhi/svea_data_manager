@@ -3,12 +3,12 @@ import logging
 import pathlib
 import re
 
+from svea_data_manager.frameworks import exceptions
 from svea_data_manager.frameworks.exceptions import UnknownPackageTypeError
 from svea_data_manager.frameworks.instrument import Instrument
 from svea_data_manager.frameworks.package import Package
 from svea_data_manager.frameworks.resource import Resource
 from svea_data_manager.frameworks.storage import FileStorage
-from svea_data_manager.instruments import exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class Ferrybox(Instrument):
         if "target_directory" not in self._config:
             msg = "Missing required configuration target_directory."
             logger.error(msg)
-            raise exceptions.InstrumentConfigurationError(msg)
+            raise exceptions.ConfigurationError(msg)
         # if 'wiski_directory' not in self._config:
         #     msg = 'Missing required configuration wiski_directory.'
         #     logger.error(msg)

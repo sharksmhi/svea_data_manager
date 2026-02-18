@@ -3,7 +3,7 @@ from pathlib import Path
 
 import click
 
-from svea_data_manager import SveaDataManager
+from svea_data_manager.manager import SveaDataManager
 
 
 @click.group()

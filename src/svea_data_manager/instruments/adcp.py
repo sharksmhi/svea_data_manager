@@ -63,7 +63,7 @@ def get_cruise_number_for_date(date):
     return False
 
 
-class ADCP(Instrument):
+class Adcp(Instrument):
     name = "ADCP"
     desc = "ADCP monitoring from Svea"
 
@@ -73,15 +73,15 @@ class ADCP(Instrument):
         self._package_key_attributes = {}
 
     def prepare_resource(self, source_file):
-        resource = ADCPResourceProcessed.from_source_file(
+        resource = AdcpResourceProcessed.from_source_file(
             self.source_directory, source_file
         )
         if not resource:
-            resource = ADCPResourceRaw.from_source_file(
+            resource = AdcpResourceRaw.from_source_file(
                 self.source_directory, source_file
             )
         if not resource:
-            resource = ADCPResourceReadme.from_source_file(
+            resource = AdcpResourceReadme.from_source_file(
                 self.source_directory, source_file
             )
         # if not resource.attributes['instrument'].startswith('ADCP'):
@@ -173,7 +173,7 @@ class ADCP(Instrument):
         return resource.attributes.copy()
 
     def write_package(self, package):
-        logger.info("Writing package %s to subversion repo" % package)
+        logger.info(f"Writing package '{package}' to {self._storage}.")
         # return self._storage.write(package, self._config.get('force', False))
         if str(package) == "readme":
             for key, attr in self._package_key_attributes.items():
@@ -185,7 +185,7 @@ class ADCP(Instrument):
             return self._storage.write(package, self._config.get("force", False))
 
 
-class ADCPResource(Resource):
+class AdcpResource(Resource):
     INSTRUMENT_MAPPING: ClassVar[dict] = {
         "ADCPWHM600": "ADCPWH600",
         "WH600": "ADCPWH600",
@@ -201,7 +201,7 @@ class ADCPResource(Resource):
         )
 
 
-class ADCPResourceRaw(ADCPResource):
+class AdcpResourceRaw(AdcpResource):
     PATTERNS = (
         re.compile(rf"^{INSTRUMENT}_{SHIP}_{YEAR}_{CRUISE}_{COUNTER}_{NR}$"),
         re.compile(rf"^{INSTRUMENT}_{SHIP}_{YEAR}_{CRUISE}_{NR}$"),
@@ -223,21 +223,21 @@ class ADCPResourceRaw(ADCPResource):
 
     @staticmethod
     def from_source_file(root_directory, source_file):
-        for PATTERN in ADCPResourceRaw.PATTERNS:
+        for PATTERN in AdcpResourceRaw.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
 
             if name_match:
                 attributes = name_match.groupdict()
                 attributes["suffix"] = source_file.suffix
-                attributes["instrument"] = ADCPResourceRaw.INSTRUMENT_MAPPING.get(
+                attributes["instrument"] = AdcpResourceRaw.INSTRUMENT_MAPPING.get(
                     attributes["instrument"], attributes["instrument"]
                 )
-                resource = ADCPResourceRaw(root_directory, source_file, attributes)
+                resource = AdcpResourceRaw(root_directory, source_file, attributes)
                 return resource
-        logger.info(f"Not patterns match for file: {source_file}")
+        logger.debug(f"No patterns match for file: {source_file}")
 
 
-class ADCPResourceProcessed(ADCPResource):
+class AdcpResourceProcessed(AdcpResource):
     VALID_PATH_IDS: ClassVar[dict] = {
         "OS_LTA": "ADCPOS150",
         "WH_LTA": "ADCPWH600",
@@ -260,7 +260,7 @@ class ADCPResourceProcessed(ADCPResource):
         )
         subdir = None
         for part in self.source_path.parts:
-            if part.upper() in ADCPResourceProcessed.SUB_DIRS:
+            if part.upper() in AdcpResourceProcessed.SUB_DIRS:
                 subdir = part.upper()
                 break
         if subdir:
@@ -278,28 +278,28 @@ class ADCPResourceProcessed(ADCPResource):
 
     @staticmethod
     def from_source_file(root_directory, source_file):
-        for PATTERN in ADCPResourceProcessed.PATTERNS:
+        for PATTERN in AdcpResourceProcessed.PATTERNS:
             name_match = PATTERN.search(str(pathlib.Path(root_directory, source_file)))
 
             if name_match:
                 attributes = name_match.groupdict()
                 attributes["suffix"] = source_file.suffix
-                for key, value in ADCPResourceProcessed.VALID_PATH_IDS.items():
+                for key, value in AdcpResourceProcessed.VALID_PATH_IDS.items():
                     if key in str(pathlib.Path(root_directory, source_file)):
                         attributes["instrument"] = value
                         break
-                attributes["instrument"] = ADCPResourceProcessed.INSTRUMENT_MAPPING.get(
+                attributes["instrument"] = AdcpResourceProcessed.INSTRUMENT_MAPPING.get(
                     attributes["instrument"], attributes["instrument"]
                 )
 
                 # if not attributes.get('instrument'):
                 #     return
 
-                resource = ADCPResourceProcessed(root_directory, source_file, attributes)
+                resource = AdcpResourceProcessed(root_directory, source_file, attributes)
                 return resource
 
 
-class ADCPResourceReadme(ADCPResource):
+class AdcpResourceReadme(AdcpResource):
     @property
     def package_key(self):
         return "readme"
@@ -317,6 +317,6 @@ class ADCPResourceReadme(ADCPResource):
     @staticmethod
     def from_source_file(root_directory, source_file):
         if "readme" in str(source_file):
-            resource = ADCPResourceReadme(root_directory, source_file)
+            resource = AdcpResourceReadme(root_directory, source_file)
             return resource
-        logger.info(f"Not patterns match for file: {source_file}")
+        logger.debug(f"No patterns match for file: {source_file}")

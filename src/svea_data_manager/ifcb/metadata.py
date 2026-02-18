@@ -2,7 +2,7 @@ import datetime
 import pathlib
 
 
-class MetadataIFCB:
+class MetadataIfcb:
     def __init__(self, **kwargs):
         self._metadata = dict(
             id=None,

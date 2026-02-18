@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from svea_data_manager.instruments.ifcb_classification import IFCBResourceClass
+from svea_data_manager.instruments.ifcb_classification import IfcbResourceClass
 
 """
 ^D{YEAR}{MONTH}{DAY}T{HOUR}{MINUTE}{SECOND}_{INSTRUMENT}_{PROCESS_CLASS}{VERSION}.mat$
@@ -28,7 +28,7 @@ def test_ifcbresourceclass_accepted_filenames(
     given_filename = Path(given_file_stem).with_suffix(".mat")
 
     # When giving it to IFCBResourceClass
-    resource = IFCBResourceClass.from_source_file(tmp_path, given_filename)
+    resource = IfcbResourceClass.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -47,7 +47,7 @@ def test_ifcbresourceclass_can_identify_date_and_datetime(
 ):
     # Given a filename
     # When giving it to IFCBResourceClass
-    resource = IFCBResourceClass.from_source_file(tmp_path, Path(given_filename))
+    resource = IfcbResourceClass.from_source_file(tmp_path, Path(given_filename))
 
     # Then the expected date is extracted from the filename
     assert resource.date == expected_datetime.date()

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from svea_data_manager.instruments.ctd import CTDResource
+from svea_data_manager.instruments.ctd import CtdResource
 
 
 @pytest.mark.parametrize(
@@ -32,7 +32,7 @@ def test_ctdresource_accepted_suffixes(tmp_path, given_suffix: str, expected_mat
     )
 
     # When giving it to CTDResource
-    resource = CTDResource.from_source_file(tmp_path, given_filename)
+    resource = CtdResource.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -57,7 +57,7 @@ def test_ctdresource_accepted_filenames(tmp_path, given_file_stem, expected_matc
     given_filename = Path(given_file_stem).with_suffix(".txt")
 
     # When giving it to CTDResource
-    resource = CTDResource.from_source_file(tmp_path, given_filename)
+    resource = CtdResource.from_source_file(tmp_path, given_filename)
 
     # Then the filename is matched or not according to expectation
     assert (resource is not None) == expected_match
@@ -84,7 +84,7 @@ def test_ctdresource_extracts_attributes_from_filename(tmp_path):
     )
 
     # When giving it to CTDResource
-    resource = CTDResource.from_source_file(tmp_path, given_filename)
+    resource = CtdResource.from_source_file(tmp_path, given_filename)
 
     # Then all the components are available in resource attributes
     assert set(resource.attributes.keys()) == {
@@ -126,7 +126,7 @@ def test_ctdresource_extracts_attributes_from_filename(tmp_path):
 def test_ctdresource_can_identify_date(tmp_path, given_filename: str, expected_date):
     # Given a filename
     # When giving it to CTDResource
-    resource = CTDResource.from_source_file(tmp_path, Path(given_filename))
+    resource = CtdResource.from_source_file(tmp_path, Path(given_filename))
 
     # Then the expected date is extracted from the filename
     assert resource.date == expected_date
