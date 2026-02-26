@@ -1,5 +1,6 @@
 import datetime
 import logging
+from collections import defaultdict
 from pathlib import Path
 
 from svea_data_manager.frameworks import exceptions
@@ -46,6 +47,7 @@ class Instrument:
         return self.__class__.name
 
     def read_packages(self):
+        logger.info(f"Reading packages for {self.name}")
         self._packages = PackageCollection()
         source_files = self.collect_source_files()
         tot_nr_files = len(source_files)
@@ -114,10 +116,10 @@ class Instrument:
 
         try:
             package = self.packages.get(package_key)
-        except PackageCollection.NotInCollection:
+        except exceptions.PackageNotInCollectionError:
             package = self.prepare_package(package_key)
             self.packages.add(package)
-            logger.info(f"New package added to PackageCollection '{package}'.")
+            logger.debug(f"New package added to PackageCollection '{package}'.")
 
         package.resources.add(resource)
         post_event(
@@ -134,10 +136,14 @@ class Instrument:
         for package in self.packages:
             self.transform_package(package, **kwargs)
 
-    def write_packages(self):
+    def write_packages(self) -> defaultdict[Path, list]:
+        writes_by_directory = defaultdict(list)
         for package in self.packages:
-            self.write_package(package)
+            writes = self.write_package(package)
+            for written_file in writes:
+                writes_by_directory[written_file.parent].append(written_file)
         post_event("on_stop_write", dict(time=datetime.datetime.now()))
+        return writes_by_directory
 
     def get_package_key_for_resource(self, resource):
         return resource.source_path.stem
@@ -160,12 +166,6 @@ class Instrument:
 
     def transform_package(self, package, **kwargs):
         return
-        msg = (
-            f"Class {self.__class__.__name__} has not implemented "
-            f"transform_package method."
-        )
-        logger.error(msg)
-        raise NotImplementedError(msg)
 
     def write_package(self, package):
         msg = f"Class {self.__class__.__name__} has not implemented write_package method."

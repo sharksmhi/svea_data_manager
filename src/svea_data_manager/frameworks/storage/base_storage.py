@@ -1,7 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
 
-from svea_data_manager.frameworks import exceptions
 from svea_data_manager.frameworks.package import Package
 
 logger = logging.getLogger(__name__)
@@ -9,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 class BaseStorage(ABC):
     def write(self, package: Package, force=False):
+        logger.debug(f"Writing package '{package}' to {self}.")
         if not isinstance(package, Package):
             raise TypeError(
                 "package must be an instance of Package, not {}".format(type(package))
@@ -32,5 +32,3 @@ class BaseStorage(ABC):
 
     def __str__(self):
         return f"{self.__class__.__name__}"
-
-    ResourceAlreadyInStorage = exceptions.ResourceAlreadyInStorageError

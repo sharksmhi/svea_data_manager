@@ -4,10 +4,11 @@ import pathlib
 import re
 from typing import ClassVar
 
+from svea_data_manager.frameworks import exceptions as framework_exceptions
 from svea_data_manager.frameworks.instrument import Instrument
 from svea_data_manager.frameworks.resource import Resource
 from svea_data_manager.frameworks.storage import FileStorage
-from svea_data_manager.instruments import exceptions
+from svea_data_manager.instruments import exceptions as instrument_exceptions
 
 CRUISE_NOT_NEEDED_AFTER_DATE = datetime.date(2023, 1, 1)
 
@@ -67,8 +68,12 @@ class Adcp(Instrument):
     name = "ADCP"
     desc = "ADCP monitoring from Svea"
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "target_directory" not in self._config:
+            msg = "Missing required configuration target_directory."
+            logger.error(msg)
+            raise framework_exceptions.ConfigurationError(msg)
         self._storage = FileStorage(self._config["target_directory"])
         self._package_key_attributes = {}
 
@@ -157,7 +162,7 @@ class Adcp(Instrument):
                                 f"for package {package!s}"
                             )
                             logger.error(msg)
-                            raise exceptions.CruiseError(msg)
+                            raise instrument_exceptions.CruiseError(msg)
                     else:
                         msg = (
                             f"Cruise for package {package!s} if set by internal mapping "
@@ -174,13 +179,14 @@ class Adcp(Instrument):
 
     def write_package(self, package):
         logger.info(f"Writing package '{package}' to {self._storage}.")
-        # return self._storage.write(package, self._config.get('force', False))
         if str(package) == "readme":
+            written = []
             for key, attr in self._package_key_attributes.items():
                 attr["package_key"] = key
                 for resource in package.resources:
                     resource.attributes.update(attr)
-                self._storage.write(package, self._config.get("force", False))
+                written += self._storage.write(package, self._config.get("force", False))
+            return written
         else:
             return self._storage.write(package, self._config.get("force", False))
 
@@ -221,18 +227,18 @@ class AdcpResourceRaw(AdcpResource):
         # Assuring instrument sub folder in instrument class
         return pathlib.Path(*parts_list)
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in AdcpResourceRaw.PATTERNS:
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
 
             if name_match:
                 attributes = name_match.groupdict()
                 attributes["suffix"] = source_file.suffix
-                attributes["instrument"] = AdcpResourceRaw.INSTRUMENT_MAPPING.get(
+                attributes["instrument"] = cls.INSTRUMENT_MAPPING.get(
                     attributes["instrument"], attributes["instrument"]
                 )
-                resource = AdcpResourceRaw(root_directory, source_file, attributes)
+                resource = cls(root_directory, source_file, attributes)
                 return resource
         logger.debug(f"No patterns match for file: {source_file}")
 
@@ -276,26 +282,23 @@ class AdcpResourceProcessed(AdcpResource):
                 path = pathlib.Path(root, "info", file_name)
         return path
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in AdcpResourceProcessed.PATTERNS:
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(str(pathlib.Path(root_directory, source_file)))
 
             if name_match:
                 attributes = name_match.groupdict()
                 attributes["suffix"] = source_file.suffix
-                for key, value in AdcpResourceProcessed.VALID_PATH_IDS.items():
+                for key, value in cls.VALID_PATH_IDS.items():
                     if key in str(pathlib.Path(root_directory, source_file)):
                         attributes["instrument"] = value
                         break
-                attributes["instrument"] = AdcpResourceProcessed.INSTRUMENT_MAPPING.get(
+                attributes["instrument"] = cls.INSTRUMENT_MAPPING.get(
                     attributes["instrument"], attributes["instrument"]
                 )
 
-                # if not attributes.get('instrument'):
-                #     return
-
-                resource = AdcpResourceProcessed(root_directory, source_file, attributes)
+                resource = cls(root_directory, source_file, attributes)
                 return resource
 
 
@@ -314,9 +317,9 @@ class AdcpResourceReadme(AdcpResource):
         ]
         return pathlib.Path(*parts_list)
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
         if "readme" in str(source_file):
-            resource = AdcpResourceReadme(root_directory, source_file)
+            resource = cls(root_directory, source_file)
             return resource
         logger.debug(f"No patterns match for file: {source_file}")

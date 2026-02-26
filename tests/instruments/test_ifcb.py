@@ -3,12 +3,25 @@ from pathlib import Path
 
 import pytest
 
+from svea_data_manager.frameworks.exceptions import ConfigurationError
 from svea_data_manager.instruments.ifcb import (
+    Ifcb,
     IfcbResourceBlobs,
     IfcbResourceFeatures,
     IfcbResourceMultiBlob,
     IfcbResourceRaw,
 )
+
+
+def test_ifcb_raises_without_target_directory():
+    # Given a configuration without target_directory.
+    given_config = {"source_directory": "/any/path/"}
+    assert "target_directory" not in given_config
+
+    # When creating Ifcb
+    # Then it raises an exception
+    with pytest.raises(ConfigurationError):
+        Ifcb(given_config)
 
 
 @pytest.mark.parametrize(
@@ -217,3 +230,37 @@ def test_ifcbresourcemultiblob_can_identify_date_and_datetime(
 
     # And the expected datetime is extracted from the filename
     assert resource.datetime == expected_datetime
+
+
+def test_ifcb_adds_file_during_transform(dir_factory):
+    # Given input and output directories
+    given_read_dir = dir_factory("read")
+    given_write_dir = dir_factory("write")
+
+    # Given there is a .hdr file
+    given_file = given_read_dir / "D20260213T113415_IFCB.hdr"
+    given_file.write_text("""gpsLatitude: 56 00.00 N\ngpsLongitude: 15 00.00 E""")
+
+    # Given IFCB
+    given_config = {
+        "source_directory": str(given_read_dir),
+        "target_directory": str(given_write_dir),
+    }
+
+    given_ifcb = Ifcb(given_config)
+    given_ifcb.read_packages()
+
+    # When transforming package
+    given_ifcb.transform_packages()
+
+    # Given there is no corresponding txt file
+    metadata_path = (
+        given_write_dir / "IFCB" / "data" / "2026" / "D20260213" / given_file.name
+    ).with_suffix(".txt")
+    assert not metadata_path.exists()
+
+    # Blaha
+    given_ifcb.write_packages()
+
+    # Then a new file is created
+    assert metadata_path.exists()

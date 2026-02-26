@@ -2,7 +2,19 @@ from pathlib import Path
 
 import pytest
 
-from svea_data_manager.instruments.mvp import MvpResource
+from svea_data_manager.frameworks.exceptions import ConfigurationError
+from svea_data_manager.instruments.mvp import Mvp, MvpResource
+
+
+def test_mvp_raises_without_subversion_repo_url():
+    # Given a configuration without target_directory.
+    given_config = {"source_directory": "/any/path/"}
+    assert "subversion_repo_url" not in given_config
+
+    # When creating Mvp
+    # Then it raises an exception
+    with pytest.raises(ConfigurationError):
+        Mvp(given_config)
 
 
 @pytest.mark.parametrize(

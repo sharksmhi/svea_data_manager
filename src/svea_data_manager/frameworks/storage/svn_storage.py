@@ -146,8 +146,7 @@ class SubversionStorage(BaseStorage):
                 "percentage": 100,
             },
         )
-
-        return commited_additions
+        return [target for _, target in files_to_add]
 
     def _delete(self, package):
         # list of files and dirs already in version control.

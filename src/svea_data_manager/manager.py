@@ -3,8 +3,10 @@ import logging
 import os
 import pkgutil
 import string
+from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -74,6 +76,7 @@ class SveaDataManager:
         return list(self._instruments.values())
 
     def read_packages(self, **kwargs):
+        logger.info("Reading packages...")
         post_event("before_read_packages")
         post_event("log", dict(msg="Reading packages..."))
         for instrument in self.instruments:
@@ -81,6 +84,7 @@ class SveaDataManager:
         post_event("after_read_packages")
 
     def transform_packages(self, **kwargs):
+        logger.info("Transforming packages...")
         post_event("before_transform_packages")
         post_event("log", dict(msg="Transforming packages..."))
         for instrument in self.instruments:
@@ -88,15 +92,21 @@ class SveaDataManager:
         post_event("after_transform_packages")
 
     def write_packages(self):
+        logger.info("Writing packages...")
         post_event("before_write_packages")
         post_event("log", dict(msg="Writing packages..."))
+        combined_writes_by_directory = defaultdict(list)
         for instrument in self.instruments:
-            instrument.write_packages()
+            writes_by_directory = instrument.write_packages()
+            for key, writes in writes_by_directory.items():
+                combined_writes_by_directory[key] += writes
+
         helpers.clear_temp_dir()
         post_event("after_write_packages")
+        _log_writes(combined_writes_by_directory)
 
     def run(self):
-        post_event("log", dict(msg="Running all"))
+        post_event("log", {"msg": "Running all"})
         # Step 1 - extract packages for each registered instrument.
         self.read_packages()
         # Step 2 - transform packages for each registered instrument.
@@ -120,11 +130,8 @@ class SveaDataManager:
                 logger.error(msg)
                 raise ValueError(msg)
 
-            print("I")
             instrument = instrument_cls(config[instrument_type])
-            print("II")
             instance.register_instrument(instrument)
-            print("III")
 
         return instance
 
@@ -155,3 +162,21 @@ def get_instrument_map() -> dict[str, type[Instrument]]:
         if module_info.name != "exceptions":
             importlib.import_module(f"{__package__}.instruments.{module_info.name}")
     return {cls.__name__.upper(): cls for cls in Instrument.__subclasses__()}
+
+
+def _log_writes(combined_writes_by_directory: defaultdict[Any, list]):
+    number_of_files = sum(len(paths) for paths in combined_writes_by_directory.values())
+    number_of_directories = len(combined_writes_by_directory)
+
+    directories = {
+        "/".join(top_levels)
+        for directory in combined_writes_by_directory
+        if (top_levels := directory.parts[:2]) and len(top_levels) == 2
+    }
+
+    ordered_directories = ", ".join(sorted(directories))
+    main_directories = f" Main directories: {ordered_directories}" if directories else ""
+    logger.info(
+        f"Wrote {number_of_files} files in {number_of_directories} directories."
+        + main_directories
+    )

@@ -3,7 +3,19 @@ from pathlib import Path
 
 import pytest
 
-from svea_data_manager.instruments.ctd import CtdResource
+from svea_data_manager.frameworks.exceptions import ConfigurationError
+from svea_data_manager.instruments.ctd import Ctd, CtdResource
+
+
+def test_ctd_raises_without_subversion_repo_url():
+    # Given a configuration without target_directory.
+    given_config = {"source_directory": "/any/path/"}
+    assert "subversion_repo_url" not in given_config
+
+    # When creating Adcp
+    # Then it raises an exception
+    with pytest.raises(ConfigurationError):
+        Ctd(given_config)
 
 
 @pytest.mark.parametrize(

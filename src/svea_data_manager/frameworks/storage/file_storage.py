@@ -73,7 +73,7 @@ class FileStorage(BaseStorage):
         for nr, (source_path, target_path, inst, key) in enumerate(files_to_copy):
             os.makedirs(target_path.parent, exist_ok=True)
             copied_file = shutil.copyfile(source_path, target_path)
-            copied_files.append(copied_file)
+            copied_files.append(Path(copied_file).relative_to(self._root_directory))
             post_event(
                 "on_progress",
                 dict(

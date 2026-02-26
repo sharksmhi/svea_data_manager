@@ -203,7 +203,6 @@ class IfcbResourceClass(Resource):
 
     @property
     def manual_directory(self) -> pathlib.Path:
-        print(str(self.absolute_source_path).split("classified")[0])
         base = str(self.absolute_source_path).split("classified")[0].strip(r"\\")
         return pathlib.Path(base) / "manual" / self.area_name
 
@@ -223,13 +222,13 @@ class IfcbResourceClass(Resource):
     def target_path(self):
         return pathlib.Path(self.package_path, "classified", self.source_path.name)
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in IfcbResourceClass.PATTERNS:
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.name)
             if name_match:
                 attributes = name_match.groupdict()
-                return IfcbResourceClass(root_directory, source_file, attributes)
+                return cls(root_directory, source_file, attributes)
 
 
 class IfcbResourceClassifier(Resource):

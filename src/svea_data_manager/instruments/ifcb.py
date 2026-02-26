@@ -80,26 +80,26 @@ class Ifcb(Instrument):
         meta = HdrFile(hdr_resource.absolute_source_path).metadata
 
         # Add external metadata:
-        ext_meta = kwargs.get("attributes", self.config.get("attributes", {}))
+        external_metadata = kwargs.get("attributes", self.config.get("attributes", {}))
         if meta.get("quality_flag") == "B":
-            ext_meta.pop("quality_flag", None)
-        meta.update(ext_meta)
+            external_metadata.pop("quality_flag", None)
+        meta.update(external_metadata)
         metadata_file.add(**meta)
         name = hdr_resource.absolute_source_path.stem + ".txt"
-        reso = IfcbResourceRaw.from_string_content(
+        metadata_resource = IfcbResourceRaw.from_string_content(
             metadata_file.get_string_content(),
             file_name=name,
             attributes=hdr_resource.attributes,
         )
-        package.resources.add(reso)
+        package.resources.add(metadata_resource)
         post_event(
             "on_transform_add_file",
-            dict(instrument=self.name, resource=reso, name=name),
+            dict(instrument=self.name, resource=metadata_resource, name=name),
         )
 
     def write_package(self, package):
         logger.info("Writing package %s to file storage" % package)
-        return self._storage.write(package, self.config.get("force", False))
+        return self._storage.write(package, self._config.get("force", False))
 
     @staticmethod
     def _get_result_file_stem(instrument):
@@ -172,15 +172,15 @@ class IfcbResourceRaw(IfcbResource):
             file_name,
         )
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        if source_file.suffix.lower() not in IfcbResourceRaw.RAW_FILE_SUFFIXES:
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
+        if source_file.suffix.lower() not in cls.RAW_FILE_SUFFIXES:
             return
-        for PATTERN in IfcbResourceRaw.PATTERNS:
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
             if name_match:
                 attributes = name_match.groupdict()
-                return IfcbResourceRaw(root_directory, source_file, attributes)
+                return cls(root_directory, source_file, attributes)
 
 
 class IfcbResourceBlobs(IfcbResource):
@@ -208,13 +208,13 @@ class IfcbResourceBlobs(IfcbResource):
             file_name,
         )
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in IfcbResourceBlobs.PATTERNS:
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.name)
             if name_match:
                 attributes = name_match.groupdict()
-                return IfcbResourceBlobs(root_directory, source_file, attributes)
+                return cls(root_directory, source_file, attributes)
 
 
 class IfcbResourceFeatures(IfcbResource):
@@ -239,13 +239,13 @@ class IfcbResourceFeatures(IfcbResource):
             file_name,
         )
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in IfcbResourceFeatures.PATTERNS:
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.name)
             if name_match:
                 attributes = name_match.groupdict()
-                return IfcbResourceFeatures(root_directory, source_file, attributes)
+                return cls(root_directory, source_file, attributes)
 
 
 class IfcbResourceMultiBlob(IfcbResource):
@@ -268,10 +268,10 @@ class IfcbResourceMultiBlob(IfcbResource):
             file_name,
         )
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in IfcbResourceMultiBlob.PATTERNS:
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.name)
             if name_match:
                 attributes = name_match.groupdict()
-                return IfcbResourceMultiBlob(root_directory, source_file, attributes)
+                return cls(root_directory, source_file, attributes)

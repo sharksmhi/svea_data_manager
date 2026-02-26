@@ -1,8 +1,25 @@
+from datetime import date
 from pathlib import Path
 
 import pytest
 
-from svea_data_manager.instruments.adcp import AdcpResourceProcessed, AdcpResourceRaw
+from svea_data_manager.frameworks.exceptions import ConfigurationError
+from svea_data_manager.instruments.adcp import (
+    Adcp,
+    AdcpResourceProcessed,
+    AdcpResourceRaw,
+)
+
+
+def test_adcp_raises_without_target_directory():
+    # Given a configuration without target_directory.
+    given_config = {"source_directory": "/any/path/"}
+    assert "target_directory" not in given_config
+
+    # When creating Adcp
+    # Then it raises an exception
+    with pytest.raises(ConfigurationError):
+        Adcp(given_config)
 
 
 @pytest.mark.parametrize(
@@ -121,3 +138,41 @@ def test_adcpresourceprocessed_extracts_attributes_from_filename(tmp_path):
     assert resource.attributes["year"] == given_year
     assert resource.attributes["cruise"] == given_cruise
     assert resource.attributes["suffix"] == given_suffix
+
+
+# The mapping code is never used due to ambiguous logic
+@pytest.mark.parametrize(
+    "given_date, expected_cruise",
+    (
+        pytest.param(date(2022, 1, 9), "?", marks=pytest.mark.xfail),
+        pytest.param(date(2022, 1, 10), "1", marks=pytest.mark.xfail),
+        pytest.param(date(2022, 8, 20), "?", marks=pytest.mark.xfail),
+    ),
+)
+def test_cruise_mapping_from_log(dir_factory, given_date, expected_cruise):
+    # Given input and output directories
+    given_read_dir = dir_factory("read")
+    given_write_dir = dir_factory("write")
+
+    # Given there is a .hdr file
+    given_file = given_read_dir / "ADCPb_SMHI_jan_2026_1.hdr"
+    given_file.write_text("Content")
+
+    # Given there is a .log file with a given date inside
+    given_log_file = given_read_dir / "ADCPb_SMHI_jan_2026_1.log"
+    given_log_file.write_text(f"{given_date.strftime('%Y/%m/%d: Something happened')}")
+
+    # Given ADCP
+    given_config = {
+        "source_directory": str(given_read_dir),
+        "target_directory": str(given_write_dir),
+    }
+
+    given_adcp = Adcp(given_config)
+    given_adcp.read_packages()
+
+    # When transforming the packag
+    given_adcp.transform_packages()
+
+    # Then cruise has expected value somewhere
+    assert False

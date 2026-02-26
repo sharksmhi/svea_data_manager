@@ -106,14 +106,14 @@ class ResourceCollection:
                 f"Only instances of Resource can be added to this collection, "
                 f"not {type(resource)}."
             )
-            logging.error(msg)
+            logger.error(msg)
             raise TypeError(msg)
         if self.has(resource):
             msg = (
                 f"Resource {resource} could not be added to this collection "
                 f"since it already has been added."
             )
-            logging.error(msg)
+            logger.error(msg)
             raise exceptions.ResourceAlreadyInCollectionError(msg)
         self._resources[str(resource)] = resource
 
@@ -123,6 +123,6 @@ class ResourceCollection:
     def get(self, resource):
         if not self.has(resource):
             msg = f"Resource {resource} does not exist in this collection."
-            logging.error(msg)
+            logger.error(msg)
             raise exceptions.ResourceNotInCollection(msg)
         return self._resources[str(resource)]

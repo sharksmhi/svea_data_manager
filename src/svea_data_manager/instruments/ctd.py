@@ -6,7 +6,7 @@ from typing import Self
 from svea_data_manager.frameworks import exceptions
 from svea_data_manager.frameworks.instrument import Instrument
 from svea_data_manager.frameworks.resource import Resource
-from svea_data_manager.frameworks.storage import FileStorage, SubversionStorage
+from svea_data_manager.frameworks.storage import SubversionStorage
 
 logger = logging.getLogger(__name__)
 
@@ -17,18 +17,13 @@ class Ctd(Instrument):
     name = "CTD"
     desc = "Conductivity, temperature and depth monitoring from Svea"
 
-    def __init__(self, config):
-        super().__init__(config)
-
-        if "subversion_repo_url" in self._config:
-            self._storage = SubversionStorage(self._config["subversion_repo_url"])
-        elif "target_directory" in self._config:
-            self._storage = FileStorage(self._config["target_directory"])
-        else:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "subversion_repo_url" not in self._config:
             raise exceptions.ConfigurationError(
-                "Missing required configuration. Either 'subversion_repo_url' or "
-                "'target_directory' must be set."
+                "Missing required configuration subversion_repo_url."
             )
+        self._storage = SubversionStorage(self._config["subversion_repo_url"])
 
     def prepare_resource(self, source_file: Path):
         return CtdResource.from_source_file(self.source_directory, source_file)
@@ -37,7 +32,6 @@ class Ctd(Instrument):
         return resource.package_key
 
     def write_package(self, package):
-        logger.info("Writing package %s to subversion repo" % package)
         return self._storage.write(package, self._config.get("force", False))
 
 
@@ -130,12 +124,12 @@ class CtdResource(Resource):
     @classmethod
     def from_source_file(cls, root_directory: Path, source_file: Path) -> Self | None:
         if source_file.suffix.lower() not in (
-            *CtdResource.RAW_FILE_SUFFIXES,
+            *cls.RAW_FILE_SUFFIXES,
             ".cnv",
             ".txt",
         ):
             return None
-        for PATTERN in CtdResource.PATTERNS:
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
 
             if name_match:

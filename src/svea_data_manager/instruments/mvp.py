@@ -14,8 +14,8 @@ class Mvp(Instrument):
     name = "MVP"
     desc = "MVP monitoring from Svea"
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if "subversion_repo_url" not in self._config:
             raise exceptions.ConfigurationError(
                 "Missing required configuration subversion_repo_url."
@@ -29,7 +29,6 @@ class Mvp(Instrument):
         return resource.package_key
 
     def write_package(self, package):
-        logger.info(f"Writing package {package} to storage {self._storage}.")
         return self._storage.write(package, self._config.get("force", False))
 
 
@@ -122,14 +121,14 @@ class MvpResource(Resource):
             return pathlib.Path(*parts_list)
         return pathlib.Path("annat", self.source_path.name)  # Temporary while testing
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
         path_str = str(pathlib.Path(root_directory, source_file)).upper()
         if "MVP" not in path_str:
             return None
         if "SMHI_" not in path_str:
             return None
-        for PATTERN in MvpResource.PATTERNS:
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
             if name_match:
                 attributes = name_match.groupdict()
@@ -137,5 +136,5 @@ class MvpResource(Resource):
                     attributes["transect"] = source_file.parent.name
                 attributes["transect"] = attributes["transect"].upper()
                 attributes["suffix"] = source_file.suffix
-                resource = MvpResource(root_directory, source_file, attributes)
+                resource = cls(root_directory, source_file, attributes)
                 return resource

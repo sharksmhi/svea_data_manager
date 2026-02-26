@@ -73,6 +73,3 @@ class PackageCollection:
             logger.debug(msg)
             raise exceptions.PackageNotInCollectionError(msg)
         return self._packages[str(package)]
-
-    AlreadyInCollection = exceptions.PackageAlreadyInCollectionError
-    NotInCollection = exceptions.PackageNotInCollectionError

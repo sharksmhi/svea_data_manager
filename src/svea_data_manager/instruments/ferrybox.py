@@ -33,17 +33,22 @@ class Ferrybox(Instrument):
     name = "Ferrybox"
     desc = "Ferrybox monitoring from Svea"
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
         if "target_directory" not in self._config:
             msg = "Missing required configuration target_directory."
             logger.error(msg)
             raise exceptions.ConfigurationError(msg)
+        self._file_storage = FileStorage(self._config["target_directory"])
+
         # if 'wiski_directory' not in self._config:
         #     msg = 'Missing required configuration wiski_directory.'
         #     logger.error(msg)
         #     raise exceptions.ImproperlyConfiguredInstrument(msg)
-        self._file_storage = FileStorage(self._config["target_directory"])
         # self._wiski_storage = FileStorage(self._config['wiski_directory'])  # Wiski
 
     def prepare_resource(self, source_file):
@@ -131,8 +136,8 @@ class FerryboxResourceRaw(Resource):
             parts_list = [self.attributes["year"], *new_parts]
             return pathlib.Path(*parts_list)
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
         full_path = pathlib.Path(root_directory, source_file)
         if "FERRYBOX" not in str(full_path).upper():
             return None
@@ -141,12 +146,12 @@ class FerryboxResourceRaw(Resource):
         if "FTP_temp" in full_path.parts:
             return None
 
-        for PATTERN in FerryboxResourceRaw.PATTERNS:
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
 
             if name_match:
                 attributes = name_match.groupdict()
-                resource = FerryboxResourceRaw(root_directory, source_file, attributes)
+                resource = cls(root_directory, source_file, attributes)
                 # TODO: Move to validate
                 # if str(resource.date) == '1904-01-01':
                 #     logger.warning(
@@ -176,13 +181,13 @@ class FerryboxResourceCO2(FerryboxResourceProcessed):
         ),
     )
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in FerryboxResourceCO2.PATTERNS:
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
             if name_match:
                 attributes = name_match.groupdict()
-                resource = FerryboxResourceCO2(root_directory, source_file, attributes)
+                resource = cls(root_directory, source_file, attributes)
                 return resource
 
 
@@ -193,11 +198,11 @@ class FerryboxResourceWiski(FerryboxResourceProcessed):
         ),
     )
 
-    @staticmethod
-    def from_source_file(root_directory, source_file):
-        for PATTERN in FerryboxResourceWiski.PATTERNS:
+    @classmethod
+    def from_source_file(cls, root_directory, source_file):
+        for PATTERN in cls.PATTERNS:
             name_match = PATTERN.search(source_file.stem)
             if name_match:
                 attributes = name_match.groupdict()
-                resource = FerryboxResourceWiski(root_directory, source_file, attributes)
+                resource = cls(root_directory, source_file, attributes)
                 return resource

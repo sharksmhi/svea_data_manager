@@ -3,11 +3,24 @@ from pathlib import Path
 
 import pytest
 
+from svea_data_manager.frameworks.exceptions import ConfigurationError
 from svea_data_manager.instruments.ferrybox import (
+    Ferrybox,
     FerryboxResourceCO2,
     FerryboxResourceRaw,
     FerryboxResourceWiski,
 )
+
+
+def test_ferrybox_raises_without_target_directory():
+    # Given a configuration without target_directory.
+    given_config = {"source_directory": "/any/path/"}
+    assert "target_directory" not in given_config
+
+    # When creating Ferrybox
+    # Then it raises an exception
+    with pytest.raises(ConfigurationError):
+        Ferrybox(given_config)
 
 
 @pytest.mark.parametrize(
