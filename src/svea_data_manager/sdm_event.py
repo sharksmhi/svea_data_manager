@@ -18,7 +18,7 @@ _sdm_subscribers = dict(
 )
 
 
-class SDMEventNotFound(Exception):
+class SdmEventNotFound(Exception):
     pass
 
 
@@ -28,15 +28,14 @@ def get_events():
 
 def subscribe(event: str, func, prio=50):
     if event not in _sdm_subscribers:
-        raise SDMEventNotFound(event)
+        raise SdmEventNotFound(event)
     _sdm_subscribers[event].setdefault(prio, [])
     _sdm_subscribers[event][prio].append(func)
 
 
 def post_event(event: str, data=None):
     if event not in _sdm_subscribers:
-        raise SDMEventNotFound(event)
+        raise SdmEventNotFound(event)
     for prio in sorted(_sdm_subscribers[event]):
         for func in _sdm_subscribers[event][prio]:
             func(data)
-

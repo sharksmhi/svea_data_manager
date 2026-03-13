@@ -1,24 +1,23 @@
-from pathlib import Path
-import logging
 import datetime
+import logging
+from pathlib import Path
 
-from svea_data_manager.frameworks import exceptions
-from svea_data_manager import helpers
+from svea_data_manager import exceptions, helpers
 
 logger = logging.getLogger(__name__)
 
 
 class Resource:
-
-    def __init__(self, source_directory, path, attributes={}):
+    def __init__(self, source_directory, path, attributes: dict | None = None):
+        attributes = attributes or {}
         self._source_directory = Path(source_directory)
 
         path = helpers.check_path(path)
         self._source_path = path
         self._target_path = path
 
-        if type(attributes) is not dict:
-            msg = 'attributes must be dict, not {}.'.format(type(attributes))
+        if not isinstance(attributes, dict):
+            msg = f"attributes must be dict, not {type(attributes)}."
             logger.error(msg)
             raise TypeError(msg)
 
@@ -55,56 +54,67 @@ class Resource:
     @property
     def date(self):
         try:
-            return datetime.datetime(int(self._attributes['year']),
-                                     int(self._attributes['month']),
-                                     int(self._attributes['day'])).date()
+            return datetime.datetime(
+                int(self._attributes["year"]),
+                int(self._attributes["month"]),
+                int(self._attributes["day"]),
+            ).date()
         except KeyError:
             return None
 
     @property
     def datetime(self):
         try:
-            return datetime.datetime(int(self._attributes['year']),
-                                     int(self._attributes['month']),
-                                     int(self._attributes['day']),
-                                     int(self._attributes['hour']),
-                                     int(self._attributes['minute']),
-                                     int(self._attributes['second']))
+            return datetime.datetime(
+                int(self._attributes["year"]),
+                int(self._attributes["month"]),
+                int(self._attributes["day"]),
+                int(self._attributes["hour"]),
+                int(self._attributes["minute"]),
+                int(self._attributes["second"]),
+            )
         except KeyError:
             return None
 
     @classmethod
-    def from_string_content(cls, string, file_name=None, attributes={}):
+    def from_string_content(cls, string, file_name=None, attributes: dict | None = None):
+        attributes = attributes or {}
         import uuid
+
         if file_name:
             temp_path = Path(helpers.get_temp_directory(), file_name)
         else:
             temp_path = Path(helpers.get_temp_directory(), str(uuid.uuid4()))
-        with open(temp_path, 'w') as fid:
+        with open(temp_path, "w") as fid:
             fid.write(string)
         return cls(temp_path.parent, temp_path.name, attributes=attributes)
 
 
 class ResourceCollection:
-
     def __init__(self):
         self._resources = {}
-    
+
     def __iter__(self):
         return iter(self._resources.values())
 
     def __len__(self):
         return len(self._resources)
 
-    def add(self, resource):
+    def add(self, resource: Resource):
         if not isinstance(resource, Resource):
-            msg = 'Only instances of Resource can be added to this collection, not {}.'.format(type(resource))
-            logging.error(msg)
+            msg = (
+                f"Only instances of Resource can be added to this collection, "
+                f"not {type(resource)}."
+            )
+            logger.error(msg)
             raise TypeError(msg)
         if self.has(resource):
-            msg = 'Resource {} could not be added to this collection since it already has been added.'.format(resource)
-            logging.error(msg)
-            raise exceptions.ResourceAlreadyInCollection(msg)
+            msg = (
+                f"Resource {resource} could not be added to this collection "
+                f"since it already has been added."
+            )
+            logger.error(msg)
+            raise exceptions.ResourceAlreadyInCollectionError(msg)
         self._resources[str(resource)] = resource
 
     def has(self, resource):
@@ -112,11 +122,7 @@ class ResourceCollection:
 
     def get(self, resource):
         if not self.has(resource):
-            msg = 'Resource {} does not exist in this collection.'.format(resource)
-            logging.error(msg)
+            msg = f"Resource {resource} does not exist in this collection."
+            logger.error(msg)
             raise exceptions.ResourceNotInCollection(msg)
         return self._resources[str(resource)]
-
-
-    NotInCollection = exceptions.ResourceNotInCollection
-    AlreadyInCollection = exceptions.ResourceAlreadyInCollection

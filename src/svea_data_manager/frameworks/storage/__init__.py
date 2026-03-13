@@ -1,0 +1,2 @@
+from svea_data_manager.frameworks.storage.file_storage import FileStorage
+from svea_data_manager.frameworks.storage.svn_storage import SubversionStorage

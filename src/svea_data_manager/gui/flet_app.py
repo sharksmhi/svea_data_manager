@@ -1,39 +1,36 @@
-import datetime
 import logging
 import logging.handlers
 import os
 import pathlib
-import shutil
 import sys
 import traceback
-import subprocess
 
 import flet as ft
 import yaml
 
-from svea_data_manager import SveaDataManager
-from svea_data_manager.sdm_logger import SDMLogger
 from svea_data_manager import sdm_event
-from svea_data_manager.sdm_event import subscribe
+from svea_data_manager.manager import SveaDataManager
 from svea_data_manager.gui.tooltip_texts import TooltipTexts, get_tooltip_widget
+from svea_data_manager.sdm_event import subscribe
+from svea_data_manager.sdm_logger import SdmLogger
 
 logger = logging.getLogger(__name__)
 
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     DIRECTORY = pathlib.Path(sys.executable).parent
 else:
     DIRECTORY = pathlib.Path(__file__).parent
 
-DEFAULT_CONFIG_SAVE_PATH = pathlib.Path(DIRECTORY, 'default_config')
+DEFAULT_CONFIG_SAVE_PATH = pathlib.Path(DIRECTORY, "default_config")
 
 # https://colorpalettes.net/color-palette-4553/
-INSTRUMENT_SECTION_BG_COLOR = '#DFE8CC'
-CONFIG_BG_COLOR = '#DAE2B6'
-DEFAULT_INSTRUMENT_BG_COLOR = '#CCD6A6'
-ATTRIBUTES_COLOR = '#F7EDDB'
+INSTRUMENT_SECTION_BG_COLOR = "#DFE8CC"
+CONFIG_BG_COLOR = "#DAE2B6"
+DEFAULT_INSTRUMENT_BG_COLOR = "#CCD6A6"
+ATTRIBUTES_COLOR = "#F7EDDB"
 
-MISSING_CONFIG_TEXT = '< Ingen konfigurationsfil vald >'
-MISSING_DATA_ROOT_TEXT = '< Ingen rotkatalog för källdata vald >'
+MISSING_CONFIG_TEXT = "< Ingen konfigurationsfil vald >"
+MISSING_DATA_ROOT_TEXT = "< Ingen rotkatalog för källdata vald >"
 
 TOOLTIP_TEXT = TooltipTexts()
 
@@ -69,20 +66,17 @@ def get_instrument_bg_color(inst):
     return INSTRUMENT_BG_COLORS.get(inst.lower(), DEFAULT_INSTRUMENT_BG_COLOR)
 
 
-DISABLED_ATTRIBUTES = [
-    'ship'
-]
+DISABLED_ATTRIBUTES = ["ship"]
 
 
 TRANSLATE = {
-    'source_directory': 'Källmapp',
-    'target_directory': 'Målmapp',
-    'ship': 'Fartyg',
-    'cruise': 'Cruise',
-    'comment': 'Kommentar',
-    'svn_commit_message': 'SVN commit-kommentar',
-
-    'source_root_directory': 'Rotmapp för källfiler',
+    "source_directory": "Källmapp",
+    "target_directory": "Målmapp",
+    "ship": "Fartyg",
+    "cruise": "Cruise",
+    "comment": "Kommentar",
+    "svn_commit_message": "SVN commit-kommentar",
+    "source_root_directory": "Rotmapp för källfiler",
 }
 
 
@@ -97,14 +91,14 @@ def load_default_config():
         path_str = fid.readline().strip()
         if not path_str:
             return None
-        path =  pathlib.Path(path_str)
+        path = pathlib.Path(path_str)
         if not path.exists():
             return None
         return path
 
 
 def save_default_config(path):
-    with open(DEFAULT_CONFIG_SAVE_PATH, 'w') as fid:
+    with open(DEFAULT_CONFIG_SAVE_PATH, "w") as fid:
         fid.write(str(path))
 
 
@@ -123,16 +117,18 @@ class FletApp:
 
         self._toggle_buttons = []
 
-        sdm_event.subscribe('after_write_packages', self._on_archiving_finished)
+        sdm_event.subscribe("after_write_packages", self._on_archiving_finished)
 
-        self.logging_level = 'DEBUG'
-        self.logging_format = '%(asctime)s [%(levelname)10s]    %(pathname)s [%(lineno)d] => %(funcName)s():    %(message)s'
-        self.logging_format_stdout = '[%(levelname)10s] %(filename)s: %(funcName)s() [%(lineno)d] %(message)s'
+        self.logging_level = "DEBUG"
+        self.logging_format = "%(asctime)s [%(levelname)10s]    %(pathname)s [%(lineno)d] => %(funcName)s():    %(message)s"
+        self.logging_format_stdout = (
+            "[%(levelname)10s] %(filename)s: %(funcName)s() [%(lineno)d] %(message)s"
+        )
         self._setup_logger()
 
-        self._logger = SDMLogger(report_directory=self._report_directory)
+        self._logger = SdmLogger(report_directory=self._report_directory)
 
-        subscribe('on_progress', self._callback_on_progress)
+        subscribe("on_progress", self._callback_on_progress)
 
         self._cleanup_reports()
 
@@ -140,7 +136,7 @@ class FletApp:
 
     def main(self, page):
         self.page = page
-        self.page.title = 'Svea Data Manager: Making your data handling easier!'
+        self.page.title = "Svea Data Manager: Making your data handling easier!"
         self._add_report_bottom_sheet()
         self._build()
         self._initiate_banner()
@@ -150,7 +146,9 @@ class FletApp:
 
         self.page.banner = ft.Banner(
             bgcolor=ft.colors.AMBER_100,
-            leading=ft.Icon(ft.icons.WARNING_AMBER_ROUNDED, color=ft.colors.AMBER, size=40),
+            leading=ft.Icon(
+                ft.icons.WARNING_AMBER_ROUNDED, color=ft.colors.AMBER, size=40
+            ),
             content=self.banner_content,
             actions=[
                 ft.TextButton("OK!", on_click=self._close_banner),
@@ -181,24 +179,32 @@ class FletApp:
     def _build(self):
         self._config_row = ft.Row()
         self._root_source_row = ft.Row()
-        self._instrument_listview = ft.ListView(expand=1, spacing=10, padding=20, auto_scroll=False)
+        self._instrument_listview = ft.ListView(
+            expand=1, spacing=10, padding=20, auto_scroll=False
+        )
 
         padding = 10
-        self.config_container = ft.Container(content=self._config_row,
-                                             bgcolor=CONFIG_BG_COLOR,
-                                             border_radius=20,
-                                             padding=padding)
+        self.config_container = ft.Container(
+            content=self._config_row,
+            bgcolor=CONFIG_BG_COLOR,
+            border_radius=20,
+            padding=padding,
+        )
 
-        self.root_source_container = ft.Container(content=self._root_source_row,
-                                             bgcolor=DEFAULT_INSTRUMENT_BG_COLOR,
-                                             border_radius=20,
-                                             padding=padding)
+        self.root_source_container = ft.Container(
+            content=self._root_source_row,
+            bgcolor=DEFAULT_INSTRUMENT_BG_COLOR,
+            border_radius=20,
+            padding=padding,
+        )
 
-        self.instrument_container = ft.Container(content=self._instrument_listview,
-                                                 bgcolor=INSTRUMENT_SECTION_BG_COLOR,
-                                                 padding=padding,
-                                                 border_radius=20,
-                                                 expand=True)
+        self.instrument_container = ft.Container(
+            content=self._instrument_listview,
+            bgcolor=INSTRUMENT_SECTION_BG_COLOR,
+            padding=padding,
+            border_radius=20,
+            expand=True,
+        )
 
         self.page.controls.append(self.config_container)
         self.page.controls.append(self.root_source_container)
@@ -220,20 +226,24 @@ class FletApp:
         self.page.update()
 
     def _setup_logger(self, **kwargs):
-        name = 'sdm'
+        name = "sdm"
         # self.logger = logging.getLogger(name)
         self.logger = logging.getLogger()
         self.logger.setLevel(self.logging_level)
 
-        debug_file_path = pathlib.Path(self._log_directory, f'{name}_debug.log')
-        handler = logging.handlers.TimedRotatingFileHandler(str(debug_file_path), when='H', interval=3, backupCount=10)
+        debug_file_path = pathlib.Path(self._log_directory, f"{name}_debug.log")
+        handler = logging.handlers.TimedRotatingFileHandler(
+            str(debug_file_path), when="H", interval=3, backupCount=10
+        )
         handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter(self.logging_format)
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
-        debug_file_path = pathlib.Path(self._log_directory, f'{name}_warning.log')
-        handler = logging.handlers.TimedRotatingFileHandler(str(debug_file_path), when='D', interval=1, backupCount=14)
+        debug_file_path = pathlib.Path(self._log_directory, f"{name}_warning.log")
+        handler = logging.handlers.TimedRotatingFileHandler(
+            str(debug_file_path), when="D", interval=1, backupCount=14
+        )
         handler.setLevel(logging.WARNING)
         formatter = logging.Formatter(self.logging_format)
         handler.setFormatter(formatter)
@@ -253,21 +263,23 @@ class FletApp:
 
     @property
     def _report_directory(self):
-        path = pathlib.Path(DIRECTORY, 'reports')
+        path = pathlib.Path(DIRECTORY, "reports")
         path.mkdir(parents=True, exist_ok=True)
         return path
 
     @property
     def _log_directory(self):
-        path = pathlib.Path(DIRECTORY, 'logs')
+        path = pathlib.Path(DIRECTORY, "logs")
         path.mkdir(parents=True, exist_ok=True)
         return path
 
     def _build_select_config(self):
         file_picker = ft.FilePicker(on_result=self._pick_config_file)
         self.page.overlay.append(file_picker)
-        btn = ft.ElevatedButton("Välj konfigurationsfil", on_click=lambda _: file_picker.pick_files(
-            allow_multiple=False))
+        btn = ft.ElevatedButton(
+            "Välj konfigurationsfil",
+            on_click=lambda _: file_picker.pick_files(allow_multiple=False),
+        )
 
         self._config_path = ft.Text(MISSING_CONFIG_TEXT)
 
@@ -281,7 +293,9 @@ class FletApp:
         self._config_row.controls.append(tt)
 
     def _build_select_root_source(self):
-        btn = ft.ElevatedButton("Välj rotkatalog för data", on_click=self._pick_source_root_dir)
+        btn = ft.ElevatedButton(
+            "Välj rotkatalog för data", on_click=self._pick_source_root_dir
+        )
 
         self._data_root_directory = ft.Text(MISSING_DATA_ROOT_TEXT)
 
@@ -313,7 +327,7 @@ class FletApp:
             self._set_config_file(str(path))
             return
         for path in pathlib.Path(DIRECTORY).iterdir():
-            if path.name.startswith('config') and path.suffix == '.yaml':
+            if path.name.startswith("config") and path.suffix == ".yaml":
                 self._set_config_file(str(path))
 
     def _pick_config_file(self, e: ft.FilePickerResultEvent):
@@ -334,7 +348,9 @@ class FletApp:
     def _on_pick_source_dir(self, e: ft.FilePickerResultEvent):
         if not e.path:
             return
-        self._instrument_items[self._current_source_instrument]['source_directory'].value = e.path
+        self._instrument_items[self._current_source_instrument][
+            "source_directory"
+        ].value = e.path
         self.update_page()
         self._current_source_instrument = None
 
@@ -363,8 +379,9 @@ class FletApp:
     def _update_gui_from_config(self):
         self._toggle_buttons = []
         self._instrument_listview.controls = []
-        btn = ft.ElevatedButton(text=f'Arkivera data från alla instrument',
-                                                  on_click=self._archive_all_data)
+        btn = ft.ElevatedButton(
+            text="Arkivera data från alla instrument", on_click=self._archive_all_data
+        )
         self._toggle_buttons.append(btn)
         self._instrument_listview.controls.append(btn)
         if not self._config:
@@ -378,21 +395,22 @@ class FletApp:
         inst_col = ft.Column()
         inst_col.controls.append(ft.Text(instrument.upper()))
         for key, value in config.items():
-            if key == 'attributes':
+            if key == "attributes":
                 continue
             if not value:
-                value = ''
+                value = ""
             row = ft.Row()
-            if key == 'source_directory':
+            if key == "source_directory":
                 tt = get_tooltip_widget(TOOLTIP_TEXT.source_directory(instrument.upper()))
                 btn = ft.ElevatedButton(
                     translate(key),
                     # icon=ft.icons.UPLOAD_FILE,
-                    on_click=lambda e, inst=instrument: self._pick_source_dir(inst))
+                    on_click=lambda e, inst=instrument: self._pick_source_dir(inst),
+                )
                 self._toggle_buttons.append(btn)
                 tt.content = btn
                 row.controls.append(tt)
-                self._instrument_items[instrument][key] = ft.Text(value or '')
+                self._instrument_items[instrument][key] = ft.Text(value or "")
                 row.controls.append(self._instrument_items[instrument][key])
             elif type(value) == bool:
                 cb = ft.Checkbox(label=key, value=value)
@@ -402,19 +420,23 @@ class FletApp:
                 row.controls.append(ft.Text(translate(key)))
                 row.controls.append(ft.Text(value))
             inst_col.controls.append(row)
-        attributes = config.get('attributes')
+        attributes = config.get("attributes")
         if attributes:
-            self._add_attributes_container(parent=inst_col.controls, instrument=instrument, attributes=attributes)
+            self._add_attributes_container(
+                parent=inst_col.controls, instrument=instrument, attributes=attributes
+            )
         tt = get_tooltip_widget(TOOLTIP_TEXT.archive_instrument(instrument))
         run_row = ft.Row()
-        btn = ft.ElevatedButton(text=f'Arkivera {instrument}-data',
-                                                  on_click=lambda e, inst=instrument: self._archive_data(inst))
+        btn = ft.ElevatedButton(
+            text=f"Arkivera {instrument}-data",
+            on_click=lambda e, inst=instrument: self._archive_data(inst),
+        )
         self._toggle_buttons.append(btn)
         run_row.controls.append(btn)
         pbar = ft.ProgressBar(width=400, value=0)
         run_row.controls.append(pbar)
 
-        progress_text = ft.Text('')
+        progress_text = ft.Text("")
         run_row.controls.append(progress_text)
 
         self._progress_bars[instrument.upper()] = pbar
@@ -423,10 +445,12 @@ class FletApp:
         tt.content = run_row
         inst_col.controls.append(tt)
 
-        container = ft.Container(content=inst_col,
-                                 bgcolor=get_instrument_bg_color(instrument),
-                                 padding=padding,
-                                 border_radius=20,)
+        container = ft.Container(
+            content=inst_col,
+            bgcolor=get_instrument_bg_color(instrument),
+            padding=padding,
+            border_radius=20,
+        )
         self._instrument_listview.controls.append(container)
 
     def _pick_source_root_dir(self, e: ft.FilePickerResultEvent):
@@ -450,35 +474,38 @@ class FletApp:
             path = subdirs.get(name.upper())
             if not path:
                 continue
-            self._instrument_items[name]['source_directory'].value = str(path)
+            self._instrument_items[name]["source_directory"].value = str(path)
 
     def _add_attributes_container(self, parent: list, instrument: str, attributes: dict):
         padding = 10
         self._attributes.setdefault(instrument, {})
         attr_col = ft.Column()
         for key, value in attributes.items():
-            print(f'{key=} : {value=}')
+            print(f"{key=} : {value=}")
             if not value:
-                value = ''
+                value = ""
             attr = ft.TextField(label=translate(key))
             attr.value = str(value)
             if key.lower() in DISABLED_ATTRIBUTES:
                 attr.disabled = True
 
             msg = TOOLTIP_TEXT.default_attribute
-            if key == 'ship':
+            if key == "ship":
                 msg = TOOLTIP_TEXT.ship
-            elif key == 'cruise':
+            elif key == "cruise":
                 msg = TOOLTIP_TEXT.cruise
             tt = get_tooltip_widget(msg)
 
             row = ft.Row()
             row.controls.append(attr)
-            if 'directory' in key:
+            if "directory" in key:
                 btn = ft.ElevatedButton(
-                    f'Hämta {translate(key).lower()}',
+                    f"Hämta {translate(key).lower()}",
                     # icon=ft.icons.UPLOAD_FILE,
-                    on_click=lambda e, inst=instrument, atr=key: self._pick_attr_dir(inst, atr))
+                    on_click=lambda e, inst=instrument, atr=key: self._pick_attr_dir(
+                        inst, atr
+                    ),
+                )
                 self._toggle_buttons.append(btn)
                 row.controls.append(btn)
 
@@ -487,10 +514,9 @@ class FletApp:
 
             self._attributes[instrument][key] = attr
 
-        container = ft.Container(content=attr_col,
-                                 bgcolor=ATTRIBUTES_COLOR,
-                                 padding=padding,
-                                 border_radius=10)
+        container = ft.Container(
+            content=attr_col, bgcolor=ATTRIBUTES_COLOR, padding=padding, border_radius=10
+        )
 
         parent.append(container)
 
@@ -503,7 +529,7 @@ class FletApp:
         """Adds attributes in GUI to config"""
         for inst, data in self._attributes.items():
             for key, widget in data.items():
-                self._config[inst]['attributes'][key] = widget.value
+                self._config[inst]["attributes"][key] = widget.value
 
     def _archive_all_data(self, e):
         self._archive_data()
@@ -516,26 +542,28 @@ class FletApp:
         config = self._config.copy()
         if inst:
             config = {inst: self._config[inst]}
-        config = {inst: config[inst] for inst in config if config[inst]['source_directory']}
-        logger.info(f'Running instruments: {",".join(list(config))}')
+        config = {
+            inst: config[inst] for inst in config if config[inst]["source_directory"]
+        }
+        logger.info(f"Running instruments: {','.join(list(config))}")
         if not config:
-            self._show_info('Du har inte angivit källmapp för något instrument!')
+            self._show_info("Du har inte angivit källmapp för något instrument!")
             return
         self._progress_bars[inst.upper()].value = 0.1
         self.update_page()
         sdm = SveaDataManager.from_config(config)
-        print('Reading')
+        print("Reading")
         sdm.read_packages()
-        print('Transforming')
+        print("Transforming")
         sdm.transform_packages()
-        print('Writing')
+        print("Writing")
         sdm.write_packages()
         report_dir = self._write_report()
         self._show_result_ok(report_dir)
 
         for ins in config:
             self._progress_bars[ins.upper()].value = 0
-            self._progress_texts[ins.upper()].value = 'Allt klart!'
+            self._progress_texts[ins.upper()].value = "Allt klart!"
         self.update_page()
 
     def _disable_toggle_buttons(self):
@@ -551,12 +579,12 @@ class FletApp:
         return report_dir
 
     def _get_result_info(self, logger_info, bad_color_if_nr=False):
-        ok_color = 'black'
-        bad_color = 'red'
+        ok_color = "black"
+        bad_color = "red"
 
         lst = []
         for inst, nr in logger_info.items():
-            item = (f'{inst}: {nr}', bad_color if nr and bad_color_if_nr else ok_color)
+            item = (f"{inst}: {nr}", bad_color if nr and bad_color_if_nr else ok_color)
             lst.append(item)
         return lst
 
@@ -566,55 +594,71 @@ class FletApp:
 
     def _show_result_ok(self, report_dir):
         nr_accepted_str = self._get_result_info(self._logger.get_nr_resources_added())
-        nr_rejected_str = self._get_result_info(self._logger.get_nr_resources_rejected(), bad_color_if_nr=True)
-        nr_transformed_str = self._get_result_info(self._logger.get_nr_transform_added_files())
+        nr_rejected_str = self._get_result_info(
+            self._logger.get_nr_resources_rejected(), bad_color_if_nr=True
+        )
+        nr_transformed_str = self._get_result_info(
+            self._logger.get_nr_transform_added_files()
+        )
         nr_copied_str = self._get_result_info(self._logger.get_nr_files_copied())
         nr_svn_prepared = self._get_result_info(self._logger.get_nr_svn_prepared())
-        nr_not_copied_str = self._get_result_info( self._logger.get_nr_target_path_exists(), bad_color_if_nr=True)
+        nr_not_copied_str = self._get_result_info(
+            self._logger.get_nr_target_path_exists(), bad_color_if_nr=True
+        )
 
         lv = ft.ListView()
         button_row = ft.Row()
-        button_row.controls.append(ft.ElevatedButton('Öppna rapportmapp',
-                                                     on_click=lambda e,
-                                                                     directory=report_dir: self._open_report_directory(
-                                                         directory)))
-        button_row.controls.append(ft.ElevatedButton('OK',
-                                                     on_click=self._close_report_bottom_sheet))
+        button_row.controls.append(
+            ft.ElevatedButton(
+                "Öppna rapportmapp",
+                on_click=lambda e, directory=report_dir: self._open_report_directory(
+                    directory
+                ),
+            )
+        )
+        button_row.controls.append(
+            ft.ElevatedButton("OK", on_click=self._close_report_bottom_sheet)
+        )
         # lv.controls.append(button_row)  # This does not work in executable. Opens new instance instead
 
-        ok_color = 'black'
-        bad_color = 'red'
+        ok_color = "black"
+        bad_color = "red"
         info_lst = []
-        info_lst.append((f'Antal filer som hanterats:', ok_color))
+        info_lst.append(("Antal filer som hanterats:", ok_color))
         info_lst.extend(nr_accepted_str)
-        info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som inte hanterats', ok_color))
+        info_lst.append(("", ok_color))
+        info_lst.append(("Antal filer som inte hanterats", ok_color))
         info_lst.extend(nr_rejected_str)
-        info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som lagts till under prosessen:', ok_color))
+        info_lst.append(("", ok_color))
+        info_lst.append(("Antal filer som lagts till under prosessen:", ok_color))
         info_lst.extend(nr_transformed_str)
-        info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som förberetts för svn:', ok_color))
+        info_lst.append(("", ok_color))
+        info_lst.append(("Antal filer som förberetts för svn:", ok_color))
         info_lst.extend(nr_svn_prepared)
-        info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som kopierats:', ok_color))
+        info_lst.append(("", ok_color))
+        info_lst.append(("Antal filer som kopierats:", ok_color))
         info_lst.extend(nr_copied_str)
-        info_lst.append(('', ok_color))
-        info_lst.append((f'Antal filer som inte kopierats:', ok_color))
+        info_lst.append(("", ok_color))
+        info_lst.append(("Antal filer som inte kopierats:", ok_color))
         info_lst.extend(nr_not_copied_str)
-        info_lst.append(('', ok_color))
-        info_lst.append((f'Se fullständig rapport under: {report_dir}', ok_color))
+        info_lst.append(("", ok_color))
+        info_lst.append((f"Se fullständig rapport under: {report_dir}", ok_color))
 
         for info in info_lst:
-            lv.controls.append(ft.Text(f'{info[0]}\n', color=info[1]))
+            lv.controls.append(ft.Text(f"{info[0]}\n", color=info[1]))
 
         button_row = ft.Row()
-        button_row.controls.append(ft.ElevatedButton('Öppna rapportmapp',
-                                                     on_click=lambda e,
-                                                                     directory=report_dir: self._open_report_directory(
-                                                         directory)))
-        button_row.controls.append(ft.ElevatedButton('OK',
-                                                     on_click=self._close_report_bottom_sheet))
+        button_row.controls.append(
+            ft.ElevatedButton(
+                "Öppna rapportmapp",
+                on_click=lambda e, directory=report_dir: self._open_report_directory(
+                    directory
+                ),
+            )
+        )
+        button_row.controls.append(
+            ft.ElevatedButton("OK", on_click=self._close_report_bottom_sheet)
+        )
         # lv.controls.append(button_row) # This does not work in executable. Opens new instance instead
         self._report_container.content = lv
         self._report_bottom_sheet.open = True
@@ -622,38 +666,69 @@ class FletApp:
         self._logger.reset()
 
     def old__show_result_ok(self, report_dir):
-        nr_accepted_str = '\n'.join(
-            [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_resources_added().items()])
-        nr_rejected_str = '\n'.join(
-            [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_resources_rejected().items()])
-        nr_transformed_str = '\n'.join(
-            [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_transform_added_files().items()])
-        nr_copied_str = '\n'.join(
-            [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_files_copied().items()])
-        nr_not_copied_str = '\n'.join(
-            [f'{inst}: {nr}' for inst, nr in self._logger.get_nr_target_path_exists().items()])
+        nr_accepted_str = "\n".join(
+            [
+                f"{inst}: {nr}"
+                for inst, nr in self._logger.get_nr_resources_added().items()
+            ]
+        )
+        nr_rejected_str = "\n".join(
+            [
+                f"{inst}: {nr}"
+                for inst, nr in self._logger.get_nr_resources_rejected().items()
+            ]
+        )
+        nr_transformed_str = "\n".join(
+            [
+                f"{inst}: {nr}"
+                for inst, nr in self._logger.get_nr_transform_added_files().items()
+            ]
+        )
+        nr_copied_str = "\n".join(
+            [f"{inst}: {nr}" for inst, nr in self._logger.get_nr_files_copied().items()]
+        )
+        nr_not_copied_str = "\n".join(
+            [
+                f"{inst}: {nr}"
+                for inst, nr in self._logger.get_nr_target_path_exists().items()
+            ]
+        )
 
         lv = ft.ListView()
-        ok_color = 'black'
-        bad_color = 'red'
+        ok_color = "black"
+        bad_color = "red"
         info_lst = [
-             (f'Antal filer som hanterats: \n{nr_accepted_str}', ok_color),
-             (f'Antal filer som inte hanterats: \n{nr_rejected_str}', bad_color if nr_rejected_str else ok_color),
-             (f'Antal filer som lagts till under prosessen: \n{nr_transformed_str}', ok_color),
-             (f'Antal filer som kopierats: \n{nr_copied_str}', ok_color),
-             (f'Antal filer som inte kopierats: \n{nr_not_copied_str}', bad_color if nr_not_copied_str else ok_color),
-             (f'Se fullständig rapport under: {report_dir}.', ok_color)
+            (f"Antal filer som hanterats: \n{nr_accepted_str}", ok_color),
+            (
+                f"Antal filer som inte hanterats: \n{nr_rejected_str}",
+                bad_color if nr_rejected_str else ok_color,
+            ),
+            (
+                f"Antal filer som lagts till under prosessen: \n{nr_transformed_str}",
+                ok_color,
+            ),
+            (f"Antal filer som kopierats: \n{nr_copied_str}", ok_color),
+            (
+                f"Antal filer som inte kopierats: \n{nr_not_copied_str}",
+                bad_color if nr_not_copied_str else ok_color,
+            ),
+            (f"Se fullständig rapport under: {report_dir}.", ok_color),
         ]
         for info in info_lst:
-            lv.controls.append(ft.Text(f'{info[0]}\n', color=info[1]))
+            lv.controls.append(ft.Text(f"{info[0]}\n", color=info[1]))
 
         button_row = ft.Row()
-        button_row.controls.append(ft.ElevatedButton('Öppna rapportmapp',
-                                                     on_click=lambda e,
-                                                                     directory=report_dir: self._open_report_directory(
-                                                         directory)))
-        button_row.controls.append(ft.ElevatedButton('OK',
-                                                     on_click=self._close_report_bottom_sheet))
+        button_row.controls.append(
+            ft.ElevatedButton(
+                "Öppna rapportmapp",
+                on_click=lambda e, directory=report_dir: self._open_report_directory(
+                    directory
+                ),
+            )
+        )
+        button_row.controls.append(
+            ft.ElevatedButton("OK", on_click=self._close_report_bottom_sheet)
+        )
         lv.controls.append(button_row)
         self._report_container.content = lv
         self._report_bottom_sheet.open = True
@@ -661,13 +736,13 @@ class FletApp:
         self._logger.reset()
 
     def _show_result_except(self, ex):
-        cont = ft.Container(bgcolor='red', padding=10)
+        cont = ft.Container(bgcolor="red", padding=10)
         col = ft.Column(expand=True)
         cont.content = col
-        col.controls.append(ft.Text('Något gick fel!'))
+        col.controls.append(ft.Text("Något gick fel!"))
         lv = ft.ListView()
         col.controls.append(lv)
-        lv.controls.append(f'{ex}\n{traceback.format_exc()}')
+        lv.controls.append(f"{ex}\n{traceback.format_exc()}")
         logger.critical(traceback.format_exc())
         self._report_container.content = cont
         self._open_report_bottom_sheet()
@@ -682,18 +757,17 @@ class FletApp:
         self._report_bottom_sheet.update()
 
     def _open_report_directory(self, report_dir):
-        print(f'{report_dir=}')
+        print(f"{report_dir=}")
         # subprocess.Popen(f'explorer /select,"{report_dir}"')
-        import os
-        os.system(f'start {report_dir}')
+        os.system(f"start {report_dir}")
 
     def _callback_on_progress(self, data):
-        pbar = self._progress_bars.get(data['instrument'].upper())
-        text = self._progress_texts.get(data['instrument'].upper())
+        pbar = self._progress_bars.get(data["instrument"].upper())
+        text = self._progress_texts.get(data["instrument"].upper())
         if not pbar:
             return
-        pbar.value = data['percentage'] / 100
-        text.value = data.get('msg', '')
+        pbar.value = data["percentage"] / 100
+        text.value = data.get("msg", "")
         self.update_page()
 
     # def _callback_file_storage(self, data):
@@ -718,6 +792,5 @@ def main():
     app = FletApp()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

@@ -5,20 +5,19 @@ import pathlib
 import re
 import sys
 import tkinter as tk
-import customtkinter as ctk
 import traceback
-from tkinter import filedialog
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 
+import customtkinter as ctk
 import yaml
 from yaml import SafeLoader
 
-from svea_data_manager import SveaDataManager
+from svea_data_manager.manager import SveaDataManager
 
 logger = logging.getLogger(__file__)
 
 
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     DIRECTORY = pathlib.Path(sys.executable).parent
 elif __file__:
     DIRECTORY = pathlib.Path(__file__).parent
@@ -32,7 +31,7 @@ class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        tk.Tk.title(self, 'Svea data manager')
+        tk.Tk.title(self, "Svea data manager")
 
         self._stringvars_source_directory = {}
         self._stringvar_config = ctk.StringVar()
@@ -42,12 +41,12 @@ class App(ctk.CTk):
         self._config = None
 
         self.logger = None
-        self._log_level = 'DEBUG'
+        self._log_level = "DEBUG"
         self._stringvar_loglevel.set(self._log_level)
-        self._loglevel_options = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-        self._logging_format = '%(asctime)s [%(levelname)10s]    %(pathname)s [%(lineno)d] => %(funcName)s():    %(message)s'
+        self._loglevel_options = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        self._logging_format = "%(asctime)s [%(levelname)10s]    %(pathname)s [%(lineno)d] => %(funcName)s():    %(message)s"
 
-        self._default_config_path = pathlib.Path(DIRECTORY, 'config.yaml')
+        self._default_config_path = pathlib.Path(DIRECTORY, "config.yaml")
 
         self._setup_logger()
 
@@ -64,11 +63,13 @@ class App(ctk.CTk):
     def _setup_logger(self, **kwargs):
         self.logger = logging.getLogger()
         self.logger.setLevel(self._log_level)
-        directory = pathlib.Path(DIRECTORY, 'log')
+        directory = pathlib.Path(DIRECTORY, "log")
         if not directory.exists():
             os.makedirs(directory)
-        file_path = pathlib.Path(directory, 'sdm.log')
-        handler = logging.handlers.TimedRotatingFileHandler(str(file_path), when='D', interval=1, backupCount=7)
+        file_path = pathlib.Path(directory, "sdm.log")
+        handler = logging.handlers.TimedRotatingFileHandler(
+            str(file_path), when="D", interval=1, backupCount=7
+        )
         formatter = logging.Formatter(self._logging_format)
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
@@ -87,10 +88,7 @@ class App(ctk.CTk):
             self._stringvars_source_directory[key.lower()] = tk.StringVar()
 
     def _build(self):
-
-        layout = {'padx': 5,
-                  'pady': 5,
-                  'sticky': 'nsew'}
+        layout = {"padx": 5, "pady": 5, "sticky": "nsew"}
 
         self._frame_paths = ctk.CTkFrame(self)
         self._frame_paths.grid(row=0, column=0, **layout)
@@ -105,39 +103,48 @@ class App(ctk.CTk):
         self._build_frame_paths()
 
     def _build_frame_paths(self):
-
         frame = self._frame_paths
         grid = dict(padx=5, pady=5)
 
         r = 0
-        ctk.CTkLabel(frame, text='Loggningsnivå:').grid(row=r, column=0, **grid, sticky='e')
-        ctk.CTkOptionMenu(frame,
-                          variable=self._stringvar_loglevel,
-                          values=self._loglevel_options,
-                          command=self._on_select_loglevel).grid(row=r, column=1, **grid, sticky='w')
-        self._stringvar_loglevel.set('WARNING')
+        ctk.CTkLabel(frame, text="Loggningsnivå:").grid(
+            row=r, column=0, **grid, sticky="e"
+        )
+        ctk.CTkOptionMenu(
+            frame,
+            variable=self._stringvar_loglevel,
+            values=self._loglevel_options,
+            command=self._on_select_loglevel,
+        ).grid(row=r, column=1, **grid, sticky="w")
+        self._stringvar_loglevel.set("WARNING")
         self._on_select_loglevel()
 
         r += 1
-        config_title = ctk.CTkLabel(frame, text='Konfigurationsfil')
-        config_title.grid(row=r, column=0, **grid, sticky='e')
-        config_title.bind('<Control-Button-1>', self._select_config_path)
-        ctk.CTkLabel(frame, textvariable=self._stringvar_config).grid(row=r, column=1, **grid,
-                                                                                     sticky='w')
+        config_title = ctk.CTkLabel(frame, text="Konfigurationsfil")
+        config_title.grid(row=r, column=0, **grid, sticky="e")
+        config_title.bind("<Control-Button-1>", self._select_config_path)
+        ctk.CTkLabel(frame, textvariable=self._stringvar_config).grid(
+            row=r, column=1, **grid, sticky="w"
+        )
 
         r += 1
-        ctk.CTkButton(frame, text='Välj rotmapp för data', command=self._select_root_dir).grid(row=r, column=0, **grid)
-        ctk.CTkLabel(frame, textvariable=self._stringvar_root).grid(row=r, column=1, **grid, sticky='w')
+        ctk.CTkButton(
+            frame, text="Välj rotmapp för data", command=self._select_root_dir
+        ).grid(row=r, column=0, **grid)
+        ctk.CTkLabel(frame, textvariable=self._stringvar_root).grid(
+            row=r, column=1, **grid, sticky="w"
+        )
 
         r += 1
-        self._button_run_all = ctk.CTkButton(frame, text='Hantera all', command=self._run_all_instruments)
-        self._button_run_all.grid(row=r, column=1, **grid, sticky='e')
-        self._button_run_all.configure(state='disabled')
+        self._button_run_all = ctk.CTkButton(
+            frame, text="Hantera all", command=self._run_all_instruments
+        )
+        self._button_run_all.grid(row=r, column=1, **grid, sticky="e")
+        self._button_run_all.configure(state="disabled")
 
-        grid_configure(frame, nr_columns=2, nr_rows=r+1)
+        grid_configure(frame, nr_columns=2, nr_rows=r + 1)
 
     def _build_frame_config(self):
-
         if self._inner_config_frame:
             self._inner_config_frame.destroy()
 
@@ -163,82 +170,108 @@ class App(ctk.CTk):
         conf_r = 0
         for inst in self._config:
             frame = ctk.CTkFrame(self._inner_config_frame)
-            frame.grid(row=conf_r, column=0, sticky='nsew', **gridl)
+            frame.grid(row=conf_r, column=0, sticky="nsew", **gridl)
             r = 0
             inst_lower = inst.lower()
             self._stringvar_attributes[inst_lower] = {}
-            ctk.CTkLabel(frame, text='-'*line_length).grid(row=r, column=0, columnspan=2, **gridl, sticky='ew')
+            ctk.CTkLabel(frame, text="-" * line_length).grid(
+                row=r, column=0, columnspan=2, **gridl, sticky="ew"
+            )
             r += 1
-            ctk.CTkLabel(frame, text=inst.upper()).grid(row=r, column=0, **gridl, sticky='w')
+            ctk.CTkLabel(frame, text=inst.upper()).grid(
+                row=r, column=0, **gridl, sticky="w"
+            )
             r += 1
             for key, item in self._config[inst].items():
-                if key == 'source_directory':
-                    self._buttons_path[inst_lower] = ctk.CTkButton(frame, text=key, command=lambda x=inst: self._select_instrument_dir(x))
-                    self._buttons_path[inst_lower].grid(row=r, column=0, **gridb, sticky='w')
-                    ctk.CTkLabel(frame, textvariable=self._stringvars_source_directory[inst_lower]).grid(row=r, 
-                                                                                                         column=1, **gridl, sticky='w')
-                elif key == 'attributes':
-                    ctk.CTkLabel(frame, text=str(key)).grid(row=r, column=0, **gridl, sticky='nw')
+                if key == "source_directory":
+                    self._buttons_path[inst_lower] = ctk.CTkButton(
+                        frame,
+                        text=key,
+                        command=lambda x=inst: self._select_instrument_dir(x),
+                    )
+                    self._buttons_path[inst_lower].grid(
+                        row=r, column=0, **gridb, sticky="w"
+                    )
+                    ctk.CTkLabel(
+                        frame, textvariable=self._stringvars_source_directory[inst_lower]
+                    ).grid(row=r, column=1, **gridl, sticky="w")
+                elif key == "attributes":
+                    ctk.CTkLabel(frame, text=str(key)).grid(
+                        row=r, column=0, **gridl, sticky="nw"
+                    )
                     attr_frame = ctk.CTkFrame(frame)
-                    attr_frame.grid(row=r, column=1, **gridl, sticky='w')
+                    attr_frame.grid(row=r, column=1, **gridl, sticky="w")
                     ar = 0
                     for attr, value in item.items():
-                        ctk.CTkLabel(attr_frame, text=attr).grid(row=ar, column=0, **gridl, sticky='w')
+                        ctk.CTkLabel(attr_frame, text=attr).grid(
+                            row=ar, column=0, **gridl, sticky="w"
+                        )
                         self._stringvar_attributes[inst_lower][attr] = tk.StringVar()
-                        entry = ctk.CTkEntry(attr_frame, textvariable=self._stringvar_attributes[inst_lower][attr])
-                        entry.grid(row=ar, column=1, **gridl, sticky='w')
+                        entry = ctk.CTkEntry(
+                            attr_frame,
+                            textvariable=self._stringvar_attributes[inst_lower][attr],
+                        )
+                        entry.grid(row=ar, column=1, **gridl, sticky="w")
                         self._stringvar_attributes[inst_lower][attr].set(value)
-                        if attr == 'ship':
-                            entry.config(state='disabled')
+                        if attr == "ship":
+                            entry.config(state="disabled")
                         ar += 1
                     grid_configure(attr_frame, nr_columns=2, nr_rows=ar)
 
                 else:
-                    ctk.CTkLabel(frame, text=str(key)).grid(row=r, column=0, **gridl, sticky='w')
-                    ctk.CTkLabel(frame, text=str(item)).grid(row=r, column=1, **gridl, sticky='w')
-                grid_configure(frame, nr_columns=2, nr_rows=r+1)
+                    ctk.CTkLabel(frame, text=str(key)).grid(
+                        row=r, column=0, **gridl, sticky="w"
+                    )
+                    ctk.CTkLabel(frame, text=str(item)).grid(
+                        row=r, column=1, **gridl, sticky="w"
+                    )
+                grid_configure(frame, nr_columns=2, nr_rows=r + 1)
 
                 r += 1
-            self._buttons_run[inst_lower] = ctk.CTkButton(frame, text='Fortsätt',
-                                                       command=lambda x=inst: self._run_instrument(x))
-            self._buttons_run[inst_lower].grid(row=r, column=1, **gridb, sticky='e')
+            self._buttons_run[inst_lower] = ctk.CTkButton(
+                frame, text="Fortsätt", command=lambda x=inst: self._run_instrument(x)
+            )
+            self._buttons_run[inst_lower].grid(row=r, column=1, **gridb, sticky="e")
             conf_r += 1
-        ctk.CTkLabel(self._inner_config_frame, text='-' * line_length).grid(row=conf_r, column=0, columnspan=2, 
-                                                                            **gridl, sticky='ew')
-        grid_configure(self._inner_config_frame, nr_columns=2, nr_rows=conf_r+1)
+        ctk.CTkLabel(self._inner_config_frame, text="-" * line_length).grid(
+            row=conf_r, column=0, columnspan=2, **gridl, sticky="ew"
+        )
+        grid_configure(self._inner_config_frame, nr_columns=2, nr_rows=conf_r + 1)
 
     def _select_config_path(self, *args):
-        path = filedialog.askopenfilename(title='Välj konfigurationsfil', filetypes=[('konfigurationsfil', '*.yaml')])
+        path = filedialog.askopenfilename(
+            title="Välj konfigurationsfil", filetypes=[("konfigurationsfil", "*.yaml")]
+        )
         if not path:
             return
         self._stringvar_config.set(path)
-        self._stringvar_root.set('')
+        self._stringvar_root.set("")
         self._on_select_config()
 
     def _select_root_dir(self):
-        directory = filedialog.askdirectory(title='Välj rotmapp')
+        directory = filedialog.askdirectory(title="Välj rotmapp")
         if not directory:
             return
         self._stringvar_root.set(directory)
         self._on_select_root_dir()
 
     def _select_instrument_dir(self, inst):
-        directory = filedialog.askdirectory(title=f'Välj mapp för {inst.upper()}-data')
+        directory = filedialog.askdirectory(title=f"Välj mapp för {inst.upper()}-data")
         if not directory:
             return
         self._set_source_path_for_instrument(inst, directory)
 
     def _on_select_config(self):
-        self._button_run_all.configure(state='disabled')
+        self._button_run_all.configure(state="disabled")
         path_str = self._stringvar_config.get()
         if not path_str:
             return
         path = pathlib.Path(path_str)
         if not path.exists():
-            self._stringvar_config.set('')
+            self._stringvar_config.set("")
             self._config = None
-            msg = 'Ingen gilltig configurationsfil vald!'
-            messagebox.showerror('Val av konfigurationsfil', msg)
+            msg = "Ingen gilltig configurationsfil vald!"
+            messagebox.showerror("Val av konfigurationsfil", msg)
             logger.debug(msg)
             return
         with open(path) as fid:
@@ -249,11 +282,11 @@ class App(ctk.CTk):
 
         self._build_frame_config()
         self._check_paths_based_on_config()
-        self._button_run_all.configure(state='normal')
+        self._button_run_all.configure(state="normal")
 
     def _on_select_root_dir(self):
         for svar in self._stringvars_source_directory.values():
-            svar.set('')
+            svar.set("")
         path_str = self._stringvar_root.get()
         if not path_str:
             return
@@ -262,16 +295,16 @@ class App(ctk.CTk):
             self._set_source_path_for_instrument(item, path)
 
     def _set_source_path_for_instrument(self, inst, path):
-        """ Sets source_path to corresponding stringvariable and instrument in self._config """
+        """Sets source_path to corresponding stringvariable and instrument in self._config"""
         if not self._stringvars_source_directory.get(inst):
             return
-        self._stringvars_source_directory[inst].set('')
+        self._stringvars_source_directory[inst].set("")
         if not self._config:
             return
         data = self._config.get(inst)
         if not data:
             return
-        self._config[inst]['source_directory'] = str(path)
+        self._config[inst]["source_directory"] = str(path)
         self._stringvars_source_directory[inst].set(str(path))
 
     def _check_paths_based_on_config(self):
@@ -281,37 +314,37 @@ class App(ctk.CTk):
             inst = inst.lower()
             paths_str = self._stringvars_source_directory[inst].get()
             if not paths_str or not pathlib.Path(paths_str).exists():
-                self._stringvars_source_directory[inst].set('')
-                self._config[inst]['source_directory'] = ''
-                
+                self._stringvars_source_directory[inst].set("")
+                self._config[inst]["source_directory"] = ""
+
     def _add_attributes_to_config(self):
         for inst, attrs in self._stringvar_attributes.items():
             for key, var in attrs:
-                self._config[key]['attributes'] = var.get().strip()
+                self._config[key]["attributes"] = var.get().strip()
 
     def _run_all_instruments(self):
         self._add_attributes_to_config()
         if not self._config:
-            msg = 'Ingen gilltig konfigurationsfil hittades'
-            messagebox.showwarning('Hanterar alla instrument', msg)
+            msg = "Ingen gilltig konfigurationsfil hittades"
+            messagebox.showwarning("Hanterar alla instrument", msg)
             logger.debug(msg)
             return
         for inst in self._config:
-            if not self._config[inst]['source_directory']:
-                msg = f'Ingen källmapp satt för instrument {inst.upper()}. Avbryter!'
-                messagebox.showwarning('Hanterar alla instrument', msg)
+            if not self._config[inst]["source_directory"]:
+                msg = f"Ingen källmapp satt för instrument {inst.upper()}. Avbryter!"
+                messagebox.showwarning("Hanterar alla instrument", msg)
                 logger.debug(msg)
                 return
         self._write_latest_config(self._config)
         try:
             self._run_with_config(self._config)
         except Exception as e:
-            messagebox.showerror('Något gick fel', f'{e}\n\n{traceback.format_exc()}')
+            messagebox.showerror("Något gick fel", f"{e}\n\n{traceback.format_exc()}")
             logger.critical(e)
             logger.critical(traceback.format_exc())
             raise
-        msg = 'Hanteringen är klar för samtliga instrument'
-        messagebox.showinfo('Hanterar alla instrument', msg)
+        msg = "Hanteringen är klar för samtliga instrument"
+        messagebox.showinfo("Hanterar alla instrument", msg)
         logger.debug(msg)
 
     def _run_instrument(self, inst, show_message=False):
@@ -319,9 +352,9 @@ class App(ctk.CTk):
         data = self._config.get(inst)
         if not data:
             return
-        if not self._config[inst]['source_directory']:
-            msg = f'Ingen källmapp satt för instrument {inst.upper()}'
-            messagebox.showwarning(f'Kör {inst}', msg)
+        if not self._config[inst]["source_directory"]:
+            msg = f"Ingen källmapp satt för instrument {inst.upper()}"
+            messagebox.showwarning(f"Kör {inst}", msg)
             logger.debug(msg)
             return
         config = {inst: data}
@@ -329,17 +362,17 @@ class App(ctk.CTk):
         try:
             self._run_with_config(config)
         except Exception as e:
-            messagebox.showerror('Något gick fel', f'{e}\n\n{traceback.format_exc()}')
+            messagebox.showerror("Något gick fel", f"{e}\n\n{traceback.format_exc()}")
             logger.critical(e)
             logger.critical(traceback.format_exc())
             raise
-        msg = f'Hanteringen är klar för instrument: {inst.upper()}'
-        messagebox.showinfo('Hanterar alla instrument', msg)
+        msg = f"Hanteringen är klar för instrument: {inst.upper()}"
+        messagebox.showinfo("Hanterar alla instrument", msg)
         logger.debug(msg)
 
     @staticmethod
     def _write_latest_config(config):
-        with open(pathlib.Path(DIRECTORY, 'latest_config.yaml'), 'w') as fid:
+        with open(pathlib.Path(DIRECTORY, "latest_config.yaml"), "w") as fid:
             yaml.dump(config, fid)
 
     @staticmethod
@@ -363,10 +396,10 @@ def grid_configure(frame, nr_rows=1, nr_columns=1, **kwargs):
 
     # Get information from kwargs
     for key, value in kwargs.items():
-        rc = int(re.findall('\d+', key)[0])
-        if 'r' in key:
+        rc = int(re.findall(r"\d+", key)[0])
+        if "r" in key:
             row_weight[rc] = value
-        elif 'c' in key:
+        elif "c" in key:
             col_weight[rc] = value
 
             # Set weight
